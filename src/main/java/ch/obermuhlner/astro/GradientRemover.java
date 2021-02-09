@@ -36,6 +36,10 @@ public class GradientRemover {
   private final List<Point> fixPoints = new ArrayList<>();
   private final List<RGBColor> fixColors = new ArrayList<>();
 
+  public void setRemovalFactor(double removalFactor) {
+    this.removalFactor = removalFactor;
+  }
+
   public void gradient(String filename) {
     try {
       DoubleImage image = ImageReader.read(new File(filename));
@@ -109,6 +113,10 @@ public class GradientRemover {
 
     this.fixColors.clear();
     this.fixColors.addAll(fixColors);
+  }
+
+  public void removeGradient(DoubleImage input, DoubleImage gradient, DoubleImage output) {
+    removeGradient(input, gradient, output, 0, 0);
   }
 
   public void removeGradient(DoubleImage input, DoubleImage gradient, DoubleImage output, int offsetX, int offsetY) {

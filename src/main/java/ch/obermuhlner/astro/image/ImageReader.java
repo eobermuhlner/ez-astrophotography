@@ -9,10 +9,18 @@ import java.io.IOException;
 public class ImageReader {
 
   public static DoubleImage read(File file) throws IOException {
-    try {
-      return new TiffDoubleImage(TiffReader.readTiff(file), true);
-    } catch (Exception ex) {
-      return new BufferedDoubleImage(ImageIO.read(file));
+    return read(file, ImageQuality.High);
+  }
+
+  public static DoubleImage read(File file, ImageQuality quality) throws IOException {
+    if (quality == ImageQuality.High) {
+      try {
+        return new TiffDoubleImage(TiffReader.readTiff(file), true);
+      } catch (Exception ex) {
+        // ignore
+      }
     }
+
+    return new BufferedDoubleImage(ImageIO.read(file));
   }
 }

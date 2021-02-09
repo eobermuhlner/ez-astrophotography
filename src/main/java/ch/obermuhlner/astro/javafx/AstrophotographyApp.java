@@ -9,8 +9,12 @@ import ch.obermuhlner.astro.image.ImageReader;
 import ch.obermuhlner.astro.image.ImageWriter;
 import javafx.application.Application;
 import javafx.beans.binding.Bindings;
+import javafx.beans.property.BooleanProperty;
+import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.ReadOnlyStringWrapper;
+import javafx.beans.property.SimpleBooleanProperty;
+import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
@@ -42,8 +46,6 @@ import javafx.stage.FileChooser.ExtensionFilter;
 import javafx.stage.Stage;
 import javafx.util.Callback;
 
-import javax.imageio.ImageIO;
-import java.awt.image.*;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Path;
@@ -58,10 +60,12 @@ public class AstrophotographyApp extends Application {
   private static final int IMAGE_WIDTH = 800;
   private static final int IMAGE_HEIGHT = 600;
 
-  private static final int ZOOM_WIDTH = 200;
-  private static final int ZOOM_HEIGHT = 200;
+  private static final int ZOOM_WIDTH = 100;
+  private static final int ZOOM_HEIGHT = 100;
 
   private static final DecimalFormat INTEGER_FORMAT = new DecimalFormat("##0");
+  private static final DecimalFormat DOUBLE_FORMAT = new DecimalFormat("##0.000");
+  private static final DecimalFormat PERCENT_FORMAT = new DecimalFormat("##0.000%");
 
   private final Path homeDirectory = homeDirectory();
 
@@ -70,9 +74,16 @@ public class AstrophotographyApp extends Application {
   private final IntegerProperty zoomCenterX = new SimpleIntegerProperty();
   private final IntegerProperty zoomCenterY = new SimpleIntegerProperty();
 
+  private final IntegerProperty sampleRadius = new SimpleIntegerProperty(3);
+
+  private final DoubleProperty removalFactor = new SimpleDoubleProperty(1.00);
+
+  private final BooleanProperty accuratePreview = new SimpleBooleanProperty(false);
+
   private File inputFile;
 
   private WritableImage inputImage;
+  private DoubleImage inputDoubleImage;
   private ImageView inputImageView;
 
   private WritableImage zoomInputImage;
@@ -112,12 +123,22 @@ public class AstrophotographyApp extends Application {
     fixPoints.addListener(new ListChangeListener<FixPoint>() {
       @Override
       public void onChanged(Change<? extends FixPoint> c) {
-        gradientRemover.setFixPoints(
-            toPointList(fixPoints),
-            new WritableDoubleImage(inputImage),
-            3);
+        updateFixPoints();
       }
     });
+    sampleRadius.addListener((observable, oldValue, newValue) -> {
+      updateFixPoints();
+    });
+    removalFactor.addListener((observable, oldValue, newValue) -> {
+      gradientRemover.setRemovalFactor(removalFactor.get());
+    });
+  }
+
+  private void updateFixPoints() {
+    gradientRemover.setFixPoints(
+        toPointList(fixPoints),
+        inputDoubleImage,
+        sampleRadius.get());
   }
 
   private Node createToolbar(Stage stage) {
@@ -186,10 +207,11 @@ public class AstrophotographyApp extends Application {
   }
 
   private void saveImage(File outputFile) throws IOException {
-    DoubleImage inputImage = ImageReader.read(this.inputFile);
+    DoubleImage inputImage = inputDoubleImage;
+    //DoubleImage inputImage = ImageReader.read(inputFile, ImageQuality.High);
     DoubleImage outputImage = createOutputImage(inputImage);
 
-    gradientRemover.removeGradient(inputImage, null, outputImage, 0, 0);
+    gradientRemover.removeGradient(inputImage, null, outputImage);
 
     ImageWriter.write(outputImage, outputFile);
   }
@@ -201,20 +223,19 @@ public class AstrophotographyApp extends Application {
   }
 
   private void loadImage(File file) throws IOException {
-    BufferedImage bufferedImage = ImageIO.read(file);
+    inputDoubleImage = ImageReader.read(file, ImageQuality.High);
 
-    WritableImage writableImage = new WritableImage(bufferedImage.getWidth(), bufferedImage.getHeight());
-    PixelWriter pw = writableImage.getPixelWriter();
-    for (int x = 0; x < bufferedImage.getWidth(); x++) {
-      for (int y = 0; y < bufferedImage.getHeight(); y++) {
-        pw.setArgb(x, y, bufferedImage.getRGB(x, y));
+    inputImage = new WritableImage(inputDoubleImage.getWidth(), inputDoubleImage.getHeight());
+    PixelWriter pw = inputImage.getPixelWriter();
+    for (int x = 0; x < inputDoubleImage.getWidth(); x++) {
+      for (int y = 0; y < inputDoubleImage.getHeight(); y++) {
+        pw.setArgb(x, y, 0xff000000 | inputDoubleImage.getPixel(x, y).toIntRGB());
       }
     }
 
-    inputImage = writableImage;
-    inputImageView.setImage(writableImage);
+    inputImageView.setImage(inputImage);
 
-    setZoom(bufferedImage.getWidth() / 2, bufferedImage.getHeight() / 2);
+    setZoom(inputDoubleImage.getWidth() / 2, inputDoubleImage.getHeight() / 2);
   }
 
   private List<Point> toPointList(ObservableList<FixPoint> fixPoints) {
@@ -335,7 +356,7 @@ public class AstrophotographyApp extends Application {
 
     TableView<FixPoint> fixPointTableView = new TableView<>(fixPoints);
     gridPane.add(fixPointTableView, 0, rowIndex, 4, 1);
-    fixPointTableView.setPrefHeight(200);
+    fixPointTableView.setPrefHeight(150);
     fixPointTableView.setRowFactory(new Callback<TableView<FixPoint>, TableRow<FixPoint>>() {
       @Override
       public TableRow<FixPoint> call(TableView<FixPoint> param) {
@@ -363,6 +384,17 @@ public class AstrophotographyApp extends Application {
     });
     rowIndex++;
 
+    gridPane.add(new Label("Sample Radius:"), 0, rowIndex);
+    TextField sampleRadiusTextField = new TextField();
+    gridPane.add(sampleRadiusTextField, 1, rowIndex);
+    Bindings.bindBidirectional(sampleRadiusTextField.textProperty(), removalFactor, INTEGER_FORMAT);
+    rowIndex++;
+
+    gridPane.add(new Label("Removal:"), 0, rowIndex);
+    TextField removalFactorTextField = new TextField();
+    gridPane.add(removalFactorTextField, 1, rowIndex);
+    Bindings.bindBidirectional(removalFactorTextField.textProperty(), removalFactor, PERCENT_FORMAT);
+    rowIndex++;
 
     setupZoomDragEvents(zoomInputImageView);
     setupZoomDragEvents(zoomPreviewImageView);

@@ -1,0 +1,28 @@
+
+plugins {
+    id 'java'
+}
+
+group = 'ch.obermuhlner'
+version = '0.1.0'
+archivesBaseName = 'ez-astrophotography'
+
+repositories {
+    mavenLocal()
+    mavenCentral()
+}
+
+dependencies {
+    //implementation 'mil.nga:tiff:2.0.2'
+    implementation 'org.apache.commons:commons-imaging:1.0-alpha2'
+
+    testImplementation 'junit:junit:4.12'
+}
+
+test {
+    testLogging {
+        events "failed"
+        exceptionFormat "full"
+    }
+}
+

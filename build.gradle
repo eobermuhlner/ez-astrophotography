@@ -1,28 +1,31 @@
 
 plugins {
     id 'java'
+    id 'application'
+    id 'org.openjfx.javafxplugin' version '0.0.9'
 }
 
 group = 'ch.obermuhlner'
 version = '0.1.0'
-archivesBaseName = 'ez-astrophotography'
+
+mainClassName = 'ch.obermuhlner.astro.javafx.AstrophotographyApp'
+applicationName = 'EZ Astrophotography'
+
 
 repositories {
     mavenLocal()
     mavenCentral()
 }
 
-dependencies {
-    //implementation 'mil.nga:tiff:2.0.2'
-    implementation 'org.apache.commons:commons-imaging:1.0-alpha2'
-
-    testImplementation 'junit:junit:4.12'
+javafx {
+    version = "15.0.1"
+    modules = [ 'javafx.controls' ]
 }
 
-test {
-    testLogging {
-        events "failed"
-        exceptionFormat "full"
-    }
+dependencies {
+    //implementation 'mil.nga:tiff:2.0.2'
+    //implementation 'org.apache.commons:commons-imaging:1.0-alpha2'
+
+    testImplementation 'junit:junit:4.12'
 }
 

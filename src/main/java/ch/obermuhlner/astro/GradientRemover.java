@@ -2,24 +2,21 @@ package ch.obermuhlner.astro;
 
 import ch.obermuhlner.astro.image.DoubleImage;
 import ch.obermuhlner.astro.image.HSVColor;
+import ch.obermuhlner.astro.image.ImageCreator;
+import ch.obermuhlner.astro.image.ImageQuality;
+import ch.obermuhlner.astro.image.ImageReader;
 import ch.obermuhlner.astro.image.ImageWriter;
 import ch.obermuhlner.astro.image.RGBColor;
-import ch.obermuhlner.astro.image.TiffDoubleImage;
-import mil.nga.tiff.FieldType;
-import mil.nga.tiff.FileDirectory;
-import mil.nga.tiff.Rasters;
-import mil.nga.tiff.TIFFImage;
-import mil.nga.tiff.TiffReader;
-import mil.nga.tiff.util.TiffConstants;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Random;
 
 public class GradientRemover {
 
-  private static final boolean DEBUG_GRADIENT = true;
+  private static final boolean DEBUG_GRADIENT = false;
   private static final boolean DEBUG_SHOW_FIX_POINTS = false;
 
   private static RGBColor[] DEBUG_COLORS = {
@@ -36,43 +33,12 @@ public class GradientRemover {
   private double removalFactor = 1.0;
   private boolean adaptiveGradient = false;
 
-  private DoubleImage readImage(File file) throws IOException {
-    //return new BufferedDoubleImage(ImageIO.read(file));
-    return new TiffDoubleImage(TiffReader.readTiff(file), true);
-  }
-
-  private DoubleImage createImage(int width, int height) {
-    //return new BufferedDoubleImage(new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB));
-
-    int samplesPerPixel = 3;
-    FieldType fieldType = FieldType.FLOAT;
-    int bitsPerSample = fieldType.getBits();
-
-    Rasters rasters = new Rasters(width, height, samplesPerPixel, fieldType);
-
-    int rowsPerStrip = rasters.calculateRowsPerStrip(TiffConstants.PLANAR_CONFIGURATION_CHUNKY);
-
-    FileDirectory directory = new FileDirectory();
-    directory.setImageWidth(width);
-    directory.setImageHeight(height);
-    directory.setBitsPerSample(Arrays.asList(bitsPerSample, bitsPerSample, bitsPerSample));
-    directory.setCompression(TiffConstants.COMPRESSION_NO);
-    directory.setPhotometricInterpretation(TiffConstants.PHOTOMETRIC_INTERPRETATION_RGB);
-    directory.setSamplesPerPixel(samplesPerPixel);
-    directory.setRowsPerStrip(rowsPerStrip);
-    directory.setPlanarConfiguration(TiffConstants.PLANAR_CONFIGURATION_CHUNKY);
-    directory.setSampleFormat(TiffConstants.SAMPLE_FORMAT_FLOAT);
-    directory.setWriteRasters(rasters);
-
-    TIFFImage tiffImage = new TIFFImage();
-    tiffImage.add(directory);
-
-    return new TiffDoubleImage(tiffImage, false);
-  }
+  private final List<Point> fixPoints = new ArrayList<>();
+  private final List<RGBColor> fixColors = new ArrayList<>();
 
   public void gradient(String filename) {
     try {
-      DoubleImage image = readImage(new File(filename));
+      DoubleImage image = ImageReader.read(new File(filename));
 
       int n = autoFixPointsGridSize;
       int gridWidth = image.getWidth() / n;
@@ -127,9 +93,94 @@ public class GradientRemover {
     }
   }
 
+  public void setFixPoints(List<Point> fixPoints, DoubleImage image, int sampleRadius) {
+    List<RGBColor> fixColors = new ArrayList<>();
+
+    for (Point fixPoint : fixPoints) {
+      fixColors.add(getAverageColor(image, fixPoint.x, fixPoint.y, sampleRadius));
+    }
+
+    setFixPoints(fixPoints, fixColors);
+  }
+
+  public void setFixPoints(List<Point> fixPoints, List<RGBColor> fixColors) {
+    this.fixPoints.clear();
+    this.fixPoints.addAll(fixPoints);
+
+    this.fixColors.clear();
+    this.fixColors.addAll(fixColors);
+  }
+
+  public void removeGradient(DoubleImage input, DoubleImage gradient, DoubleImage output, int offsetX, int offsetY) {
+    double[] distances = new double[fixPoints.size()];
+    double[] factors = new double[fixPoints.size()];
+
+    for (int y = 0; y < input.getHeight(); y++) {
+      for (int x = 0; x < input.getWidth(); x++) {
+        Point point = new Point(offsetX + x, offsetY + y);
+        RGBColor gradientColor;
+
+        if (true) {
+          double maxDistance = 0;
+          for (int i = 0; i < fixPoints.size(); i++) {
+            Point gradientPoint = fixPoints.get(i);
+            distances[i] = point.distance(gradientPoint);
+            maxDistance = Math.max(maxDistance, distances[i]);
+          }
+
+          double totalFactor = 0;
+          for (int i = 0; i < fixPoints.size(); i++) {
+            double factor = 1.0 - distances[i] / maxDistance;
+            factor = factor * factor * factor;
+            factors[i] = factor;
+            totalFactor += factor;
+          }
+
+          gradientColor = new RGBColor(0, 0, 0);
+          for (int i = 0; i < fixPoints.size(); i++) {
+            double factor = factors[i] / totalFactor;
+            gradientColor = gradientColor.plus(fixColors.get(i).multiply(factor));
+          }
+        } else {
+          gradientColor = fixColors.get(0);
+          double lastDistance = fixPoints.get(0).distance(point);
+          for (int i = 1; i < fixPoints.size(); i++) {
+            double thisDistance = fixPoints.get(i).distance(point);
+            double thisFactor = thisDistance / (lastDistance + thisDistance);
+            thisFactor = smoothstep(0, 1, thisFactor);
+            gradientColor = fixColors.get(i).interpolate(gradientColor, thisFactor);
+            lastDistance = thisDistance;
+          }
+        }
+
+        RGBColor inputColor = input.getPixel(x, y);
+
+        double pixelRemovalFactor = removalFactor;
+        gradientColor = gradientColor.multiply(pixelRemovalFactor);
+        if (adaptiveGradient) {
+          HSVColor imageHSV = HSVColor.fromRGB(inputColor);
+          HSVColor gradientHSV = HSVColor.fromRGB(gradientColor);
+          double v = (imageHSV.v + gradientHSV.v) / 2;
+          gradientHSV = new HSVColor(gradientHSV.h, gradientHSV.s, v);
+          gradientColor = RGBColor.fromHSV(gradientHSV);
+        }
+
+        if (gradient != null) {
+          gradient.setPixel(x, y, gradientColor);
+        }
+
+        RGBColor outputColor = inputColor.minus(gradientColor);
+
+        if (output != null) {
+          output.setPixel(x, y, outputColor);
+        }
+      }
+    }
+  }
+
   public void gradient(String filename, Point[] points) {
     try {
-      DoubleImage image = readImage(new File(filename));
+      DoubleImage image = ImageReader.read(new File(filename));
       gradient(filename, image, points);
     }
     catch (IOException e) {
@@ -189,8 +240,8 @@ public class GradientRemover {
     double[] factors = new double[points.length];
 
     try {
-      DoubleImage gradient = createImage(image.getWidth(), image.getHeight());
-      DoubleImage output = createImage(image.getWidth(), image.getHeight());
+      DoubleImage gradient = ImageCreator.create(image.getWidth(), image.getHeight(), ImageQuality.High);
+      DoubleImage output = ImageCreator.create(image.getWidth(), image.getHeight(), ImageQuality.High);
 
       for (int y = 0; y < image.getHeight(); y++) {
         for (int x = 0; x < image.getWidth(); x++) {
@@ -258,8 +309,8 @@ public class GradientRemover {
         }
       }
 
-      ImageWriter.writeTif(gradient, new File(filename + "_gradient.tif"));
-      ImageWriter.writeTif(output, new File(filename + "_output.tif"));
+      ImageWriter.write(gradient, new File(filename + "_gradient.tif"));
+      ImageWriter.write(output, new File(filename + "_output.tif"));
     }
     catch (IOException e) {
       e.printStackTrace();
@@ -278,31 +329,6 @@ public class GradientRemover {
       }
     }
     return false;
-  }
-
-  private static class Point {
-    public final int x;
-    public final int y;
-
-    public Point(int x, int y) {
-      this.x = x;
-      this.y = y;
-    }
-
-    public double distance(Point other) {
-      double dx = other.x - x;
-      double dy = other.y - y;
-
-      return Math.sqrt(dx*dx + dy*dy);
-    }
-
-    @Override
-    public String toString() {
-      return "Point{" +
-          "x=" + x +
-          ", y=" + y +
-          '}';
-    }
   }
 
   // Autosave001.tif 262,250 3071,291 1686,1403 333,3489 2937,3421 1716,1880 1723,3485 3201,2177 68,2103 1800,2040 3213,3692

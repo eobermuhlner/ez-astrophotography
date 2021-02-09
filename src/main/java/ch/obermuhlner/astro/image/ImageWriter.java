@@ -8,16 +8,43 @@ import java.io.IOException;
 
 public class ImageWriter {
 
-  public static void writeTif(DoubleImage image, File output) throws IOException {
-    if (image instanceof BufferedDoubleImage) {
-      BufferedDoubleImage bufferedDoubleImage = ((BufferedDoubleImage) image);
-      ImageIO.write(bufferedDoubleImage.image, "TIF", output);
-      return;
+  public static void write(DoubleImage image, File output) throws IOException {
+    String name = output.getName();
+
+    for (ImageFormat format : ImageFormat.values()) {
+      for (String extension : format.getExtensions()) {
+        if (name.length() > extension.length() && name.substring(name.length() - extension.length()).equalsIgnoreCase(extension)) {
+          write(image, output, format);
+          return;
+        }
+      }
     }
 
+    write(image, output, ImageFormat.TIF);
+  }
+
+  public static void write(DoubleImage image, File output, ImageFormat format) throws IOException {
     if (image instanceof TiffDoubleImage) {
-      TiffDoubleImage tiffDoubleImage = (TiffDoubleImage) image;
-      TiffWriter.writeTiff(output, tiffDoubleImage.tiffImage);
+      if (format == ImageFormat.TIF) {
+        TiffDoubleImage tiffDoubleImage = (TiffDoubleImage) image;
+        TiffWriter.writeTiff(output, tiffDoubleImage.tiffImage);
+        return;
+      }
+
+      int width = image.getWidth();
+      int height = image.getHeight();
+      DoubleImage imageCopy = ImageCreator.create(width, height, ImageQuality.Standard);
+      for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+          imageCopy.setPixel(x, y, image.getPixel(x, y));
+        }
+      }
+      image = imageCopy;
+    }
+
+    if (image instanceof BufferedDoubleImage) {
+      BufferedDoubleImage bufferedDoubleImage = ((BufferedDoubleImage) image);
+      ImageIO.write(bufferedDoubleImage.image, format.name(), output);
       return;
     }
 

@@ -44,8 +44,8 @@ public class ImageWriter {
       image = imageCopy;
     }
 
-    if (image instanceof BufferedDoubleImage) {
-      BufferedDoubleImage bufferedDoubleImage = ((BufferedDoubleImage) image);
+    if (image instanceof AwtBufferedDoubleImage) {
+      AwtBufferedDoubleImage bufferedDoubleImage = ((AwtBufferedDoubleImage) image);
       ImageIO.write(bufferedDoubleImage.image, format.name(), output);
       return;
     }

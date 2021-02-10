@@ -21,6 +21,6 @@ public class ImageReader {
       }
     }
 
-    return new BufferedDoubleImage(ImageIO.read(file));
+    return new AwtBufferedDoubleImage(ImageIO.read(file));
   }
 }

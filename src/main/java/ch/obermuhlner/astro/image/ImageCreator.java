@@ -16,7 +16,7 @@ public class ImageCreator {
       return createTiff(width, height);
     }
 
-    return new BufferedDoubleImage(new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB));
+    return new AwtBufferedDoubleImage(new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB));
   }
 
   public static DoubleImage createTiff(int width, int height) {

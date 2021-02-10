@@ -49,7 +49,7 @@ public class TiffDoubleImage implements DoubleImage {
     }
 
     if (model == ColorModel.HSV) {
-      ColorUtil.convertRGBtoHSV(samples[ColorModel.R], samples[ColorModel.G], samples[ColorModel.B], samples);
+      ColorUtil.convertRGBtoHSV(samples, samples);
     }
 
     return samples;
@@ -59,7 +59,7 @@ public class TiffDoubleImage implements DoubleImage {
   public void setPixel(int x, int y, ColorModel model, double[] samples) {
     double[] rgbSamples;
     if (model == ColorModel.HSV) {
-      rgbSamples = ColorUtil.convertHSVToRGB(samples[ColorModel.H], samples[ColorModel.S], samples[ColorModel.V], null);
+      rgbSamples = ColorUtil.convertHSVtoRGB(samples, null);
     } else {
       rgbSamples = samples;
     }

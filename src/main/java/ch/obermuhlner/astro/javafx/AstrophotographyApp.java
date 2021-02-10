@@ -89,19 +89,19 @@ public class AstrophotographyApp extends Application {
   private ImageView inputImageView;
 
   private WritableImage zoomInputImage;
-  private WritableDoubleImage zoomInputDoubleImage;
+  private JavaFXWritableDoubleImage zoomInputDoubleImage;
   private ImageView zoomInputImageView;
 
   private WritableImage zoomPreviewImage;
-  private WritableDoubleImage zoomPreviewDoubleImage;
+  private JavaFXWritableDoubleImage zoomPreviewDoubleImage;
   private ImageView zoomPreviewImageView;
 
   private WritableImage zoomGradientImage;
-  private WritableDoubleImage zoomGradientDoubleImage;
+  private JavaFXWritableDoubleImage zoomGradientDoubleImage;
   private ImageView zoomGradientImageView;
 
   private WritableImage zoomDeltaImage;
-  private WritableDoubleImage zoomDeltaDoubleImage;
+  private JavaFXWritableDoubleImage zoomDeltaDoubleImage;
   private ImageView zoomDeltaImageView;
 
   private final ObservableList<FixPoint> fixPoints = FXCollections.observableArrayList();
@@ -341,19 +341,19 @@ public class AstrophotographyApp extends Application {
     VBox box = new VBox(4);
 
     zoomInputImage = new WritableImage(ZOOM_WIDTH, ZOOM_HEIGHT);
-    zoomInputDoubleImage = new WritableDoubleImage(zoomInputImage);
+    zoomInputDoubleImage = new JavaFXWritableDoubleImage(zoomInputImage);
     zoomInputImageView = new ImageView(zoomInputImage);
 
     zoomPreviewImage = new WritableImage(ZOOM_WIDTH, ZOOM_HEIGHT);
-    zoomPreviewDoubleImage = new WritableDoubleImage(zoomPreviewImage);
+    zoomPreviewDoubleImage = new JavaFXWritableDoubleImage(zoomPreviewImage);
     zoomPreviewImageView = new ImageView(zoomPreviewImage);
 
     zoomGradientImage = new WritableImage(ZOOM_WIDTH, ZOOM_HEIGHT);
-    zoomGradientDoubleImage = new WritableDoubleImage(zoomGradientImage);
+    zoomGradientDoubleImage = new JavaFXWritableDoubleImage(zoomGradientImage);
     zoomGradientImageView = new ImageView(zoomGradientImage);
 
     zoomDeltaImage = new WritableImage(ZOOM_WIDTH, ZOOM_HEIGHT);
-    zoomDeltaDoubleImage = new WritableDoubleImage(zoomDeltaImage);
+    zoomDeltaDoubleImage = new JavaFXWritableDoubleImage(zoomDeltaImage);
     zoomDeltaImageView = new ImageView(zoomDeltaImage);
 
     GridPane gridPane = new GridPane();

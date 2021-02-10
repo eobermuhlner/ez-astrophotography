@@ -2,11 +2,11 @@ package ch.obermuhlner.astro.image;
 
 import java.awt.image.*;
 
-public class BufferedDoubleImage implements DoubleImage {
+public class AwtBufferedDoubleImage implements DoubleImage {
 
   final BufferedImage image;
 
-  public BufferedDoubleImage(BufferedImage image) {
+  public AwtBufferedDoubleImage(BufferedImage image) {
     this.image = image;
   }
 
@@ -33,7 +33,7 @@ public class BufferedDoubleImage implements DoubleImage {
     samples[ColorModel.B] = (rgb & 0xff) / 255.0;
 
     if (model == ColorModel.HSV) {
-        ColorUtil.convertRGBtoHSV(samples[ColorModel.R], samples[ColorModel.G], samples[ColorModel.B], samples);
+        ColorUtil.convertRGBtoHSV(samples, samples);
     }
 
     return samples;
@@ -43,7 +43,7 @@ public class BufferedDoubleImage implements DoubleImage {
   public void setPixel(int x, int y, ColorModel model, double[] samples) {
     double[] rgbSamples;
     if (model == ColorModel.HSV) {
-      rgbSamples = ColorUtil.convertHSVToRGB(samples[ColorModel.H], samples[ColorModel.S], samples[ColorModel.V], null);
+      rgbSamples = ColorUtil.convertHSVtoRGB(samples, null);
     } else {
       rgbSamples = samples;
     }

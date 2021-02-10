@@ -2,7 +2,6 @@ package ch.obermuhlner.astro.javafx;
 
 import ch.obermuhlner.astro.GradientRemover;
 import ch.obermuhlner.astro.Point;
-import ch.obermuhlner.astro.image.ArrayDoubleImage;
 import ch.obermuhlner.astro.image.ColorModel;
 import ch.obermuhlner.astro.image.ColorUtil;
 import ch.obermuhlner.astro.image.DoubleImage;
@@ -70,7 +69,6 @@ public class AstrophotographyApp extends Application {
   private static final int ZOOM_HEIGHT = 200;
 
   private static final boolean ACCURATE_PREVIEW = true;
-  private static final boolean ACCURATE_PREVIEW_USING_WRITE_THROUGH = true;
 
   private static final DecimalFormat INTEGER_FORMAT = new DecimalFormat("##0");
   private static final DecimalFormat DOUBLE_FORMAT = new DecimalFormat("##0.000");
@@ -324,47 +322,16 @@ public class AstrophotographyApp extends Application {
     int zoomOffsetX = zoomX - ZOOM_WIDTH/2;
     int zoomOffsetY = zoomY - ZOOM_HEIGHT/2;
 
-    if (ACCURATE_PREVIEW) {
-      ImageUtil.copyPixels(
-          inputDoubleImage,
-          zoomOffsetX,
-          zoomOffsetY,
-          zoomInputDoubleImage,
-          0,
-          0,
-          ZOOM_WIDTH,
-          ZOOM_HEIGHT,
-          ColorModel.RGB);
-    }
-
-    if (!ACCURATE_PREVIEW_USING_WRITE_THROUGH) {
-      int zoomWidth = ZOOM_WIDTH;
-      int zoomHeight = ZOOM_HEIGHT;
-
-      if (zoomOffsetX < ZOOM_WIDTH) {
-        zoomWidth = ZOOM_WIDTH - zoomOffsetX;
-        zoomOffsetX = 0;
-      } else if (zoomOffsetX > inputDoubleImage.getWidth() - ZOOM_WIDTH) {
-        zoomWidth = inputDoubleImage.getWidth() - zoomOffsetX;
-      }
-      if (zoomOffsetY < ZOOM_HEIGHT) {
-        zoomHeight = ZOOM_HEIGHT - zoomOffsetY;
-        zoomOffsetY = 0;
-      } else if (zoomOffsetY > inputDoubleImage.getHeight() - ZOOM_HEIGHT) {
-        zoomHeight = inputDoubleImage.getHeight() - zoomOffsetY;
-      }
-
-      zoomInputImage.getPixelWriter().setPixels(
-          0,
-          0,
-          zoomWidth,
-          zoomHeight,
-          inputImage.getPixelReader(),
-          zoomOffsetX,
-          zoomOffsetY
-      );
-      // TODO fill outside area
-    }
+    ImageUtil.copyPixels(
+        inputDoubleImage,
+        zoomOffsetX,
+        zoomOffsetY,
+        zoomInputDoubleImage,
+        0,
+        0,
+        ZOOM_WIDTH,
+        ZOOM_HEIGHT,
+        ColorModel.RGB);
 
     gradientRemover.removeGradient(
         zoomInputDoubleImage,
@@ -412,11 +379,7 @@ public class AstrophotographyApp extends Application {
 
     zoomInputImage = new WritableImage(ZOOM_WIDTH, ZOOM_HEIGHT);
     if (ACCURATE_PREVIEW) {
-      if (ACCURATE_PREVIEW_USING_WRITE_THROUGH) {
-        zoomInputDoubleImage = new WriteThroughArrayDoubleImage(new JavaFXWritableDoubleImage(zoomInputImage), ColorModel.RGB);
-      } else {
-        zoomInputDoubleImage = new ArrayDoubleImage(ZOOM_WIDTH, ZOOM_HEIGHT, ColorModel.RGB);
-      }
+      zoomInputDoubleImage = new WriteThroughArrayDoubleImage(new JavaFXWritableDoubleImage(zoomInputImage), ColorModel.RGB);
     } else {
       zoomInputDoubleImage = new JavaFXWritableDoubleImage(zoomInputImage);
     }

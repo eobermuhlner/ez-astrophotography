@@ -2,6 +2,8 @@ package ch.obermuhlner.astro.javafx;
 
 import ch.obermuhlner.astro.GradientRemover;
 import ch.obermuhlner.astro.Point;
+import ch.obermuhlner.astro.image.ColorModel;
+import ch.obermuhlner.astro.image.ColorUtil;
 import ch.obermuhlner.astro.image.DoubleImage;
 import ch.obermuhlner.astro.image.ImageCreator;
 import ch.obermuhlner.astro.image.ImageQuality;
@@ -60,8 +62,8 @@ public class AstrophotographyApp extends Application {
   private static final int IMAGE_WIDTH = 800;
   private static final int IMAGE_HEIGHT = 600;
 
-  private static final int ZOOM_WIDTH = 100;
-  private static final int ZOOM_HEIGHT = 100;
+  private static final int ZOOM_WIDTH = 150;
+  private static final int ZOOM_HEIGHT = 150;
 
   private static final DecimalFormat INTEGER_FORMAT = new DecimalFormat("##0");
   private static final DecimalFormat DOUBLE_FORMAT = new DecimalFormat("##0.000");
@@ -226,10 +228,12 @@ public class AstrophotographyApp extends Application {
     inputDoubleImage = ImageReader.read(file, ImageQuality.High);
 
     inputImage = new WritableImage(inputDoubleImage.getWidth(), inputDoubleImage.getHeight());
+    double[] rgb = new double[3];
     PixelWriter pw = inputImage.getPixelWriter();
     for (int x = 0; x < inputDoubleImage.getWidth(); x++) {
       for (int y = 0; y < inputDoubleImage.getHeight(); y++) {
-        pw.setArgb(x, y, 0xff000000 | inputDoubleImage.getPixel(x, y).toIntRGB());
+        inputDoubleImage.getPixel(x, y, ColorModel.RGB, rgb);
+        pw.setArgb(x, y, 0xff000000 | ColorUtil.toIntRGB(rgb));
       }
     }
 
@@ -327,11 +331,10 @@ public class AstrophotographyApp extends Application {
     TextField zoomCenterXTextField = new TextField();
     gridPane.add(zoomCenterXTextField, 1, rowIndex);
     Bindings.bindBidirectional(zoomCenterXTextField.textProperty(), zoomCenterX, INTEGER_FORMAT);
-    rowIndex++;
 
-    gridPane.add(new Label("Y:"), 0, rowIndex);
+    gridPane.add(new Label("Y:"), 2, rowIndex);
     TextField zoomCenterYTextField = new TextField();
-    gridPane.add(zoomCenterYTextField, 1, rowIndex);
+    gridPane.add(zoomCenterYTextField, 3, rowIndex);
     Bindings.bindBidirectional(zoomCenterYTextField.textProperty(), zoomCenterY, INTEGER_FORMAT);
     rowIndex++;
 

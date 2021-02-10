@@ -33,10 +33,12 @@ public class ImageWriter {
 
       int width = image.getWidth();
       int height = image.getHeight();
+      double[] rgb = new double[3];
       DoubleImage imageCopy = ImageCreator.create(width, height, ImageQuality.Standard);
       for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
-          imageCopy.setPixel(x, y, image.getPixel(x, y));
+          image.getPixel(x, y, ColorModel.RGB, rgb);
+          imageCopy.setPixel(x, y, ColorModel.RGB, rgb);
         }
       }
       image = imageCopy;

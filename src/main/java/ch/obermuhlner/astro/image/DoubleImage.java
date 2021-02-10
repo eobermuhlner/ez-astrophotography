@@ -5,7 +5,6 @@ public interface DoubleImage {
   int getWidth();
   int getHeight();
 
-  RGBColor getPixel(int x, int y);
-
-  void setPixel(int x, int y, RGBColor rgb);
+  double[] getPixel(int x, int y, ColorModel model, double[] samples);
+  void setPixel(int x, int y, ColorModel model, double[] samples);
 }

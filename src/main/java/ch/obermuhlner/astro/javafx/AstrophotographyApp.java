@@ -145,6 +145,7 @@ public class AstrophotographyApp extends Application {
     });
     removalFactor.addListener((observable, oldValue, newValue) -> {
       gradientRemover.setRemovalFactor(removalFactor.get());
+      updateZoom();
     });
 
     zoomCenterX.addListener((observable, oldValue, newValue) -> {

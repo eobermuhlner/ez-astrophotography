@@ -122,7 +122,7 @@ public class GradientRemover {
         outputColor[ColorModel.B] = inputColor[ColorModel.B] - gradientColor[ColorModel.B];
 
         if (output != null) {
-          output.setPixel(x, y, ColorModel.RGB, inputColor);
+          output.setPixel(x, y, ColorModel.RGB, outputColor);
         }
       }
     }

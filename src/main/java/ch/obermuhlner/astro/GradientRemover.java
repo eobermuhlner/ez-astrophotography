@@ -22,8 +22,7 @@ public class GradientRemover {
       { 0, 1, 1 },
   };
 
-  private int autoFixPointsGridSize = 3;
-  private int sampleRadius = 3;
+  private double interpolationPower = 3.0;
   private double removalFactor = 1.0;
   private boolean adaptiveGradient = false;
 
@@ -32,6 +31,10 @@ public class GradientRemover {
 
   public void setRemovalFactor(double removalFactor) {
     this.removalFactor = removalFactor;
+  }
+
+  public void setInterpolationPower(double interpolationPower) {
+    this.interpolationPower = interpolationPower;
   }
 
   public void setFixPoints(List<Point> fixPoints, DoubleImage image, int sampleRadius) {
@@ -68,17 +71,17 @@ public class GradientRemover {
       for (int x = 0; x < input.getWidth(); x++) {
         Point point = new Point(offsetX + x, offsetY + y);
 
-        double maxDistance = 0;
+        double totalDistance = 0;
         for (int i = 0; i < fixPoints.size(); i++) {
           Point gradientPoint = fixPoints.get(i);
           distances[i] = point.distance(gradientPoint);
-          maxDistance = Math.max(maxDistance, distances[i]);
+          totalDistance += distances[i];
         }
 
         double totalFactor = 0;
         for (int i = 0; i < fixPoints.size(); i++) {
-          double factor = 1.0 - distances[i] / maxDistance;
-          factor = factor * factor * factor;
+          double factor = 1.0 - distances[i] / totalDistance;
+          factor = Math.pow(factor, interpolationPower);
           factors[i] = factor;
           totalFactor += factor;
         }

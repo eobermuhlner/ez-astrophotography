@@ -70,7 +70,7 @@ public class AstrophotographyApp extends Application {
   private static final int ZOOM_HEIGHT = 200;
 
   private static final boolean ACCURATE_PREVIEW = true;
-  private static final boolean ACCURATE_PREVIEW_USING_WRITE_THROUGH = false;
+  private static final boolean ACCURATE_PREVIEW_USING_WRITE_THROUGH = true;
 
   private static final DecimalFormat INTEGER_FORMAT = new DecimalFormat("##0");
   private static final DecimalFormat DOUBLE_FORMAT = new DecimalFormat("##0.000");
@@ -88,7 +88,8 @@ public class AstrophotographyApp extends Application {
 
   private final IntegerProperty sampleRadius = new SimpleIntegerProperty(3);
 
-  private final DoubleProperty removalFactor = new SimpleDoubleProperty(1.00);
+  private final DoubleProperty interpolationPower = new SimpleDoubleProperty(3.0);
+  private final DoubleProperty removalFactor = new SimpleDoubleProperty(1.0);
 
   private File inputFile;
 
@@ -142,6 +143,10 @@ public class AstrophotographyApp extends Application {
     });
     sampleRadius.addListener((observable, oldValue, newValue) -> {
       updateFixPoints();
+    });
+    interpolationPower.addListener((observable, oldValue, newValue) -> {
+      gradientRemover.setInterpolationPower(interpolationPower.get());
+      updateZoom();
     });
     removalFactor.addListener((observable, oldValue, newValue) -> {
       gradientRemover.setRemovalFactor(removalFactor.get());
@@ -515,6 +520,12 @@ public class AstrophotographyApp extends Application {
     TextField sampleRadiusTextField = new TextField();
     gridPane.add(sampleRadiusTextField, 1, rowIndex);
     Bindings.bindBidirectional(sampleRadiusTextField.textProperty(), sampleRadius, INTEGER_FORMAT);
+    rowIndex++;
+
+    gridPane.add(new Label("Interpolation Power:"), 0, rowIndex);
+    TextField interpolationPowerTextField = new TextField();
+    gridPane.add(interpolationPowerTextField, 1, rowIndex);
+    Bindings.bindBidirectional(interpolationPowerTextField.textProperty(), interpolationPower, DOUBLE_FORMAT);
     rowIndex++;
 
     gridPane.add(new Label("Removal:"), 0, rowIndex);

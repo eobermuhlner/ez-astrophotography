@@ -37,7 +37,7 @@ public class ArrayDoubleImage implements DoubleImage {
       samples = new double[3];
     }
 
-    int index = x + y * width * SAMPLES_PER_PIXEL;
+    int index = (x + y * width) * SAMPLES_PER_PIXEL;
     samples[0] = data[index + 0];
     samples[1] = data[index + 1];
     samples[2] = data[index + 2];
@@ -72,7 +72,7 @@ public class ArrayDoubleImage implements DoubleImage {
 
   @Override
   public void setPixel(int x, int y, ColorModel model, double[] samples) {
-    int index = x + y * width * SAMPLES_PER_PIXEL;
+    int index = (x + y * width) * SAMPLES_PER_PIXEL;
 
     data[index + 0] = samples[0];
     data[index + 1] = samples[1];

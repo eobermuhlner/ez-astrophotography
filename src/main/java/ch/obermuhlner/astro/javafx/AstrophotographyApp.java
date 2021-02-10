@@ -13,6 +13,7 @@ import ch.obermuhlner.astro.image.ImageWriter;
 import ch.obermuhlner.astro.image.WriteThroughArrayDoubleImage;
 import javafx.application.Application;
 import javafx.beans.binding.Bindings;
+import javafx.beans.binding.IntegerBinding;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.ObjectProperty;
@@ -45,7 +46,11 @@ import javafx.scene.input.MouseEvent;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
+import javafx.scene.layout.Pane;
+import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Rectangle;
 import javafx.stage.FileChooser;
 import javafx.stage.FileChooser.ExtensionFilter;
 import javafx.stage.Stage;
@@ -57,6 +62,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.function.Function;
 
@@ -88,6 +94,9 @@ public class AstrophotographyApp extends Application {
 
   private final DoubleProperty interpolationPower = new SimpleDoubleProperty(3.0);
   private final DoubleProperty removalFactor = new SimpleDoubleProperty(1.0);
+
+  private final List<Color> crosshairColors = Arrays.asList(Color.YELLOW, Color.RED, Color.GREEN, Color.BLUE, Color.TRANSPARENT);
+  private final ObjectProperty<Color> crosshairColor = new SimpleObjectProperty<>(crosshairColors.get(0));
 
   private File inputFile;
 
@@ -191,6 +200,18 @@ public class AstrophotographyApp extends Application {
       saveImageFile(stage);
     });
 
+    Button crosshairColorButton = new Button();
+    box.getChildren().add(crosshairColorButton);
+    Rectangle rectangle = new Rectangle(10, 10);
+    rectangle.setFill(Color.TRANSPARENT);
+    rectangle.strokeProperty().bind(crosshairColor);
+    crosshairColorButton.setGraphic(rectangle);
+    crosshairColorButton.setOnAction(event -> {
+      int index = crosshairColors.indexOf(crosshairColor.get());
+      index = (index + 1) % crosshairColors.size();
+      crosshairColor.setValue(crosshairColors.get(index));
+    });
+
     return box;
   }
 
@@ -225,6 +246,7 @@ public class AstrophotographyApp extends Application {
     FileChooser fileChooser = new FileChooser();
     fileChooser.setInitialDirectory(directory);
     fileChooser.setTitle("Save Image");
+    fileChooser.getExtensionFilters().add(new ExtensionFilter("Images", "*.tif", "*.tiff", "*.png", "*.jpg", "*.jpeg"));
     File outputFile = fileChooser.showSaveDialog(stage);
 
     if (outputFile != null) {
@@ -284,7 +306,7 @@ public class AstrophotographyApp extends Application {
     VBox box = new VBox(2);
 
     inputImageView = new ImageView();
-    box.getChildren().add(inputImageView);
+    box.getChildren().add(withZoomRectangle(inputImageView));
 
     inputImageView.setPreserveRatio(true);
     inputImageView.setFitWidth(IMAGE_WIDTH);
@@ -416,15 +438,15 @@ public class AstrophotographyApp extends Application {
     rowIndex++;
 
     gridPane.add(new Label("Zoom:"), 0, rowIndex);
-    gridPane.add(zoomInputImageView, 1, rowIndex);
+    gridPane.add(withCrosshair(zoomInputImageView), 1, rowIndex);
     gridPane.add(new Label("Preview:"), 2, rowIndex);
-    gridPane.add(zoomPreviewImageView, 3, rowIndex);
+    gridPane.add(withCrosshair(zoomPreviewImageView), 3, rowIndex);
     rowIndex++;
 
     gridPane.add(new Label("Gradient:"), 0, rowIndex);
-    gridPane.add(zoomGradientImageView, 1, rowIndex);
+    gridPane.add(withCrosshair(zoomGradientImageView), 1, rowIndex);
     gridPane.add(new Label("Delta:"), 2, rowIndex);
-    gridPane.add(zoomDeltaImageView, 3, rowIndex);
+    gridPane.add(withCrosshair(zoomDeltaImageView), 3, rowIndex);
 
     ComboBox<ColorModel> zoomDeltaColorModelComboBox = new ComboBox<>(FXCollections.observableArrayList(ColorModel.values()));
     gridPane.add(zoomDeltaColorModelComboBox, 4, rowIndex);
@@ -451,6 +473,7 @@ public class AstrophotographyApp extends Application {
 
     TableView<FixPoint> fixPointTableView = new TableView<>(fixPoints);
     gridPane.add(fixPointTableView, 0, rowIndex, 4, 1);
+    fixPointTableView.setPlaceholder(new Label("Add points to define the background gradient."));
     fixPointTableView.setPrefHeight(150);
     fixPointTableView.setRowFactory(new Callback<TableView<FixPoint>, TableRow<FixPoint>>() {
       @Override
@@ -503,6 +526,49 @@ public class AstrophotographyApp extends Application {
     setupZoomDragEvents(zoomDeltaImageView);
 
     return box;
+  }
+
+  private Node withZoomRectangle(ImageView imageView) {
+    Rectangle rectangle = new Rectangle();
+    rectangle.strokeProperty().bind(crosshairColor);
+    rectangle.setFill(Color.TRANSPARENT);
+
+    zoomCenterX.addListener((observable, oldValue, newValue) -> {
+      updateZoomRectangle(rectangle);
+    });
+    zoomCenterY.addListener((observable, oldValue, newValue) -> {
+      updateZoomRectangle(rectangle);
+    });
+    inputImageView.imageProperty().addListener((observable, oldValue, newValue) -> {
+      updateZoomRectangle(rectangle);
+    });
+
+    return new Pane(imageView, rectangle);
+  }
+
+  private void updateZoomRectangle(Rectangle rectangle) {
+    double width = ZOOM_WIDTH / inputImage.getWidth() * inputImageView.getBoundsInLocal().getWidth();
+    double height = ZOOM_HEIGHT / inputImage.getHeight() * inputImageView.getBoundsInLocal().getHeight();
+    double x = zoomCenterX.get() / inputImage.getWidth() * inputImageView.getBoundsInLocal().getWidth();
+    double y = zoomCenterY.get() / inputImage.getHeight() * inputImageView.getBoundsInLocal().getHeight();
+    rectangle.setX(x - width / 2);
+    rectangle.setY(y - height / 2);
+    rectangle.setWidth(width);
+    rectangle.setHeight(height);
+  }
+
+  private Node withCrosshair(ImageView imageView) {
+    IntegerBinding size = sampleRadius.multiply(2).add(1);
+
+    Rectangle rectangle = new Rectangle();
+    rectangle.widthProperty().bind(size);
+    rectangle.heightProperty().bind(size);
+    rectangle.strokeProperty().bind(crosshairColor);
+    rectangle.setFill(Color.TRANSPARENT);
+    rectangle.setX(ZOOM_WIDTH/2);
+    rectangle.setY(ZOOM_HEIGHT/2);
+
+    return new StackPane(imageView, rectangle);
   }
 
   private <E, V> TableColumn<E, V> addTableColumn(TableView<E> tableView, String header, double prefWidth, Function<E, ObservableValue<V>> valueFunction) {

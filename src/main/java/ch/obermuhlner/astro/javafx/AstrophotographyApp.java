@@ -100,6 +100,10 @@ public class AstrophotographyApp extends Application {
   private WritableDoubleImage zoomGradientDoubleImage;
   private ImageView zoomGradientImageView;
 
+  private WritableImage zoomDeltaImage;
+  private WritableDoubleImage zoomDeltaDoubleImage;
+  private ImageView zoomDeltaImageView;
+
   private final ObservableList<FixPoint> fixPoints = FXCollections.observableArrayList();
 
   @Override
@@ -303,6 +307,34 @@ public class AstrophotographyApp extends Application {
         zoomPreviewDoubleImage,
         zoomOffsetX,
         zoomOffsetY);
+
+    calculateDiffImage(zoomInputDoubleImage, zoomGradientDoubleImage, zoomDeltaDoubleImage);
+  }
+
+  private void calculateDiffImage(DoubleImage image1, DoubleImage image2, DoubleImage deltaImage) {
+    double[] hsv1 = new double[3];
+    double[] hsv2 = new double[3];
+    double[] rgb = new double[3];
+
+    for (int y = 0; y < image1.getHeight(); y++) {
+      for (int x = 0; x < image1.getWidth(); x++) {
+        image1.getPixel(x, y, ColorModel.HSV, hsv1);
+        image2.getPixel(x, y, ColorModel.HSV, hsv2);
+        double delta = hsv1[ColorModel.V] - hsv2[ColorModel.V];
+
+        if (delta < 0) {
+          rgb[ColorModel.R] = Math.min(1, -delta * 20);
+          rgb[ColorModel.G] = Math.min(1, -delta * 10);
+          rgb[ColorModel.B] = Math.min(1, -delta * 10);
+        } else if (delta >= 0) {
+          rgb[ColorModel.R] = Math.min(1, delta * 10);
+          rgb[ColorModel.G] = Math.min(1, delta * 10);
+          rgb[ColorModel.B] = Math.min(1, delta * 20);
+        }
+
+        deltaImage.setPixel(x, y, ColorModel.RGB, rgb);
+      }
+    }
   }
 
   private Node createEditor() {
@@ -319,6 +351,10 @@ public class AstrophotographyApp extends Application {
     zoomGradientImage = new WritableImage(ZOOM_WIDTH, ZOOM_HEIGHT);
     zoomGradientDoubleImage = new WritableDoubleImage(zoomGradientImage);
     zoomGradientImageView = new ImageView(zoomGradientImage);
+
+    zoomDeltaImage = new WritableImage(ZOOM_WIDTH, ZOOM_HEIGHT);
+    zoomDeltaDoubleImage = new WritableDoubleImage(zoomDeltaImage);
+    zoomDeltaImageView = new ImageView(zoomDeltaImage);
 
     GridPane gridPane = new GridPane();
     box.getChildren().add(gridPane);
@@ -346,6 +382,8 @@ public class AstrophotographyApp extends Application {
 
     gridPane.add(new Label("Gradient:"), 0, rowIndex);
     gridPane.add(zoomGradientImageView, 1, rowIndex);
+    gridPane.add(new Label("Delta:"), 2, rowIndex);
+    gridPane.add(zoomDeltaImageView, 3, rowIndex);
     rowIndex++;
 
     VBox fixPointToolbar = new VBox(4);
@@ -402,6 +440,7 @@ public class AstrophotographyApp extends Application {
     setupZoomDragEvents(zoomInputImageView);
     setupZoomDragEvents(zoomPreviewImageView);
     setupZoomDragEvents(zoomGradientImageView);
+    setupZoomDragEvents(zoomDeltaImageView);
 
     return box;
   }

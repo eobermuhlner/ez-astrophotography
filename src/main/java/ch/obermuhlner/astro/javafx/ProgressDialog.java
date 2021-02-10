@@ -12,6 +12,10 @@ import javafx.stage.StageStyle;
 public class ProgressDialog {
 
   public static void show(String title, String message, Runnable runnable) {
+    runnable.run();
+  }
+
+  public static void showREALLY(String title, String message, Runnable runnable) {
     Stage dialogStage = new Stage();
     dialogStage.initStyle(StageStyle.UTILITY);
     dialogStage.setResizable(false);

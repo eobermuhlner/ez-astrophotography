@@ -2,6 +2,7 @@ package ch.obermuhlner.astro;
 
 import ch.obermuhlner.astro.image.ColorModel;
 import ch.obermuhlner.astro.image.DoubleImage;
+import ch.obermuhlner.astro.image.ImageUtil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -61,6 +62,7 @@ public class GradientRemover {
 
     double[] gradientColor = new double[3];
     double[] inputColor = new double[3];
+    double[] outputColor = new double[3];
 
     for (int y = 0; y < input.getHeight(); y++) {
       for (int x = 0; x < input.getWidth(); x++) {
@@ -81,14 +83,20 @@ public class GradientRemover {
           totalFactor += factor;
         }
 
+        if (fixPoints.size() == 1) {
+          factors[0] = 1;
+          totalFactor = 1;
+        }
+
         gradientColor[ColorModel.R] = 0;
         gradientColor[ColorModel.G] = 0;
         gradientColor[ColorModel.B] = 0;
         for (int i = 0; i < fixPoints.size(); i++) {
           double factor = factors[i] / totalFactor;
-          gradientColor[ColorModel.R] += fixColors.get(i)[ColorModel.R] * factor;
-          gradientColor[ColorModel.G] += fixColors.get(i)[ColorModel.G] * factor;
-          gradientColor[ColorModel.B] += fixColors.get(i)[ColorModel.B] * factor;
+          double[] fixColor = fixColors.get(i);
+          gradientColor[ColorModel.R] += fixColor[ColorModel.R] * factor;
+          gradientColor[ColorModel.G] += fixColor[ColorModel.G] * factor;
+          gradientColor[ColorModel.B] += fixColor[ColorModel.B] * factor;
         }
 
         input.getPixel(x, y, ColorModel.RGB, inputColor);
@@ -109,9 +117,9 @@ public class GradientRemover {
           gradient.setPixel(x, y, ColorModel.RGB, gradientColor);
         }
 
-        inputColor[ColorModel.R] -= gradientColor[ColorModel.R];
-        inputColor[ColorModel.G] -= gradientColor[ColorModel.G];
-        inputColor[ColorModel.B] -= gradientColor[ColorModel.B];
+        outputColor[ColorModel.R] = inputColor[ColorModel.R] - gradientColor[ColorModel.R];
+        outputColor[ColorModel.G] = inputColor[ColorModel.G] - gradientColor[ColorModel.G];
+        outputColor[ColorModel.B] = inputColor[ColorModel.B] - gradientColor[ColorModel.B];
 
         if (output != null) {
           output.setPixel(x, y, ColorModel.RGB, inputColor);
@@ -136,7 +144,7 @@ public class GradientRemover {
     double[] rgb = new double[3];
     for (int sy = y-sampleRadius; sy <= y+sampleRadius; sy++) {
       for (int sx = x-sampleRadius; sx < x+sampleRadius; sx++) {
-        if (isInsideImage(image, sx, sy)) {
+        if (ImageUtil.isInsideImage(image, sx, sy)) {
           image.getPixel(sx, sy, ColorModel.RGB, rgb);
           r += rgb[ColorModel.R];
           g += rgb[ColorModel.G];
@@ -146,10 +154,6 @@ public class GradientRemover {
       }
     }
     return new double[] { r/n, g/n, b/n };
-  }
-
-  private boolean isInsideImage(DoubleImage image, int x, int y) {
-    return x >= 0 && y >= 0 && x < image.getWidth() && y < image.getHeight();
   }
 
   private double smoothstep(double edge0, double edge1, double x) {

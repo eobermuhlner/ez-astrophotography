@@ -128,4 +128,21 @@ public class ColorUtil {
     rgb[rgbOffset + ColorModel.B] = b;
     return rgb;
   }
+
+  public static double sampleDistance(double[] sample1, double[] sample2, ColorModel colorModel, int sampleIndex, boolean normalize) {
+    double delta = sample1[sampleIndex] - sample2[sampleIndex];
+    if (colorModel == ColorModel.HSV && sampleIndex == ColorModel.H) {
+      if (delta > 180) {
+        delta -= 180;
+      } else if (delta < -180) {
+        delta += 180;
+      }
+
+      if (normalize) {
+        delta = delta / 180;
+      }
+    }
+
+    return delta;
+  }
 }

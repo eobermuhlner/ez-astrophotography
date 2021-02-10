@@ -2,22 +2,25 @@ package ch.obermuhlner.astro.javafx;
 
 import ch.obermuhlner.astro.GradientRemover;
 import ch.obermuhlner.astro.Point;
+import ch.obermuhlner.astro.image.ArrayDoubleImage;
 import ch.obermuhlner.astro.image.ColorModel;
 import ch.obermuhlner.astro.image.ColorUtil;
 import ch.obermuhlner.astro.image.DoubleImage;
 import ch.obermuhlner.astro.image.ImageCreator;
 import ch.obermuhlner.astro.image.ImageQuality;
 import ch.obermuhlner.astro.image.ImageReader;
+import ch.obermuhlner.astro.image.ImageUtil;
 import ch.obermuhlner.astro.image.ImageWriter;
+import ch.obermuhlner.astro.image.WriteThroughArrayDoubleImage;
 import javafx.application.Application;
 import javafx.beans.binding.Bindings;
-import javafx.beans.property.BooleanProperty;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.IntegerProperty;
+import javafx.beans.property.ObjectProperty;
 import javafx.beans.property.ReadOnlyStringWrapper;
-import javafx.beans.property.SimpleBooleanProperty;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleIntegerProperty;
+import javafx.beans.property.SimpleObjectProperty;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
@@ -27,6 +30,7 @@ import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.Button;
+import javafx.scene.control.ComboBox;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
@@ -62,8 +66,11 @@ public class AstrophotographyApp extends Application {
   private static final int IMAGE_WIDTH = 800;
   private static final int IMAGE_HEIGHT = 600;
 
-  private static final int ZOOM_WIDTH = 150;
-  private static final int ZOOM_HEIGHT = 150;
+  private static final int ZOOM_WIDTH = 200;
+  private static final int ZOOM_HEIGHT = 200;
+
+  private static final boolean ACCURATE_PREVIEW = true;
+  private static final boolean ACCURATE_PREVIEW_USING_WRITE_THROUGH = false;
 
   private static final DecimalFormat INTEGER_FORMAT = new DecimalFormat("##0");
   private static final DecimalFormat DOUBLE_FORMAT = new DecimalFormat("##0.000");
@@ -76,11 +83,12 @@ public class AstrophotographyApp extends Application {
   private final IntegerProperty zoomCenterX = new SimpleIntegerProperty();
   private final IntegerProperty zoomCenterY = new SimpleIntegerProperty();
 
+  private final ObjectProperty<ColorModel> zoomDeltaColorModel = new SimpleObjectProperty<>(ColorModel.HSV);
+  private final IntegerProperty zoomDeltaSampleIndex = new SimpleIntegerProperty(ColorModel.V);
+
   private final IntegerProperty sampleRadius = new SimpleIntegerProperty(3);
 
   private final DoubleProperty removalFactor = new SimpleDoubleProperty(1.00);
-
-  private final BooleanProperty accuratePreview = new SimpleBooleanProperty(false);
 
   private File inputFile;
 
@@ -89,19 +97,19 @@ public class AstrophotographyApp extends Application {
   private ImageView inputImageView;
 
   private WritableImage zoomInputImage;
-  private JavaFXWritableDoubleImage zoomInputDoubleImage;
+  private DoubleImage zoomInputDoubleImage;
   private ImageView zoomInputImageView;
 
   private WritableImage zoomPreviewImage;
-  private JavaFXWritableDoubleImage zoomPreviewDoubleImage;
+  private DoubleImage zoomPreviewDoubleImage;
   private ImageView zoomPreviewImageView;
 
   private WritableImage zoomGradientImage;
-  private JavaFXWritableDoubleImage zoomGradientDoubleImage;
+  private DoubleImage zoomGradientDoubleImage;
   private ImageView zoomGradientImageView;
 
   private WritableImage zoomDeltaImage;
-  private JavaFXWritableDoubleImage zoomDeltaDoubleImage;
+  private DoubleImage zoomDeltaDoubleImage;
   private ImageView zoomDeltaImageView;
 
   private final ObservableList<FixPoint> fixPoints = FXCollections.observableArrayList();
@@ -138,6 +146,19 @@ public class AstrophotographyApp extends Application {
     removalFactor.addListener((observable, oldValue, newValue) -> {
       gradientRemover.setRemovalFactor(removalFactor.get());
     });
+
+    zoomCenterX.addListener((observable, oldValue, newValue) -> {
+      updateZoom();
+    });
+    zoomCenterY.addListener((observable, oldValue, newValue) -> {
+      updateZoom();
+    });
+    zoomDeltaColorModel.addListener((observable, oldValue, newValue) -> {
+      updateZoom();
+    });
+    zoomDeltaSampleIndex.addListener((observable, oldValue, newValue) -> {
+      updateZoom();
+    });
   }
 
   private void updateFixPoints() {
@@ -145,6 +166,7 @@ public class AstrophotographyApp extends Application {
         toPointList(fixPoints),
         inputDoubleImage,
         sampleRadius.get());
+    updateZoom();
   }
 
   private Node createToolbar(Stage stage) {
@@ -288,18 +310,55 @@ public class AstrophotographyApp extends Application {
     updateZoom(x, y);
   }
 
+  private void updateZoom() {
+    updateZoom(zoomCenterX.get(), zoomCenterY.get());
+  }
+
   private void updateZoom(int zoomX, int zoomY) {
     int zoomOffsetX = zoomX - ZOOM_WIDTH/2;
     int zoomOffsetY = zoomY - ZOOM_HEIGHT/2;
 
-    zoomInputImage.getPixelWriter().setPixels(
-        0,
-        0,
-        ZOOM_WIDTH,
-        ZOOM_HEIGHT,
-        inputImage.getPixelReader(),
-        zoomOffsetX,
-        zoomOffsetY);
+    if (ACCURATE_PREVIEW) {
+      ImageUtil.copyPixels(
+          inputDoubleImage,
+          zoomOffsetX,
+          zoomOffsetY,
+          zoomInputDoubleImage,
+          0,
+          0,
+          ZOOM_WIDTH,
+          ZOOM_HEIGHT,
+          ColorModel.RGB);
+    }
+
+    if (!ACCURATE_PREVIEW_USING_WRITE_THROUGH) {
+      int zoomWidth = ZOOM_WIDTH;
+      int zoomHeight = ZOOM_HEIGHT;
+
+      if (zoomOffsetX < ZOOM_WIDTH) {
+        zoomWidth = ZOOM_WIDTH - zoomOffsetX;
+        zoomOffsetX = 0;
+      } else if (zoomOffsetX > inputDoubleImage.getWidth() - ZOOM_WIDTH) {
+        zoomWidth = inputDoubleImage.getWidth() - zoomOffsetX;
+      }
+      if (zoomOffsetY < ZOOM_HEIGHT) {
+        zoomHeight = ZOOM_HEIGHT - zoomOffsetY;
+        zoomOffsetY = 0;
+      } else if (zoomOffsetY > inputDoubleImage.getHeight() - ZOOM_HEIGHT) {
+        zoomHeight = inputDoubleImage.getHeight() - zoomOffsetY;
+      }
+
+      zoomInputImage.getPixelWriter().setPixels(
+          0,
+          0,
+          zoomWidth,
+          zoomHeight,
+          inputImage.getPixelReader(),
+          zoomOffsetX,
+          zoomOffsetY
+      );
+      // TODO fill outside area
+    }
 
     gradientRemover.removeGradient(
         zoomInputDoubleImage,
@@ -308,19 +367,24 @@ public class AstrophotographyApp extends Application {
         zoomOffsetX,
         zoomOffsetY);
 
-    calculateDiffImage(zoomInputDoubleImage, zoomGradientDoubleImage, zoomDeltaDoubleImage);
+    calculateDiffImage(
+        zoomInputDoubleImage,
+        zoomGradientDoubleImage,
+        zoomDeltaDoubleImage,
+        zoomDeltaColorModel.get(),
+        zoomDeltaSampleIndex.get());
   }
 
-  private void calculateDiffImage(DoubleImage image1, DoubleImage image2, DoubleImage deltaImage) {
-    double[] hsv1 = new double[3];
-    double[] hsv2 = new double[3];
+  private void calculateDiffImage(DoubleImage image1, DoubleImage image2, DoubleImage deltaImage, ColorModel colorModel, int sampleIndex) {
+    double[] sample1 = new double[3];
+    double[] sample2 = new double[3];
     double[] rgb = new double[3];
 
     for (int y = 0; y < image1.getHeight(); y++) {
       for (int x = 0; x < image1.getWidth(); x++) {
-        image1.getPixel(x, y, ColorModel.HSV, hsv1);
-        image2.getPixel(x, y, ColorModel.HSV, hsv2);
-        double delta = hsv1[ColorModel.V] - hsv2[ColorModel.V];
+        image1.getPixel(x, y, colorModel, sample1);
+        image2.getPixel(x, y, colorModel, sample2);
+        double delta = ColorUtil.sampleDistance(sample1, sample2, colorModel, sampleIndex, true);
 
         if (delta < 0) {
           rgb[ColorModel.R] = Math.min(1, -delta * 20);
@@ -341,7 +405,15 @@ public class AstrophotographyApp extends Application {
     VBox box = new VBox(4);
 
     zoomInputImage = new WritableImage(ZOOM_WIDTH, ZOOM_HEIGHT);
-    zoomInputDoubleImage = new JavaFXWritableDoubleImage(zoomInputImage);
+    if (ACCURATE_PREVIEW) {
+      if (ACCURATE_PREVIEW_USING_WRITE_THROUGH) {
+        zoomInputDoubleImage = new WriteThroughArrayDoubleImage(new JavaFXWritableDoubleImage(zoomInputImage), ColorModel.RGB);
+      } else {
+        zoomInputDoubleImage = new ArrayDoubleImage(ZOOM_WIDTH, ZOOM_HEIGHT, ColorModel.RGB);
+      }
+    } else {
+      zoomInputDoubleImage = new JavaFXWritableDoubleImage(zoomInputImage);
+    }
     zoomInputImageView = new ImageView(zoomInputImage);
 
     zoomPreviewImage = new WritableImage(ZOOM_WIDTH, ZOOM_HEIGHT);
@@ -349,7 +421,7 @@ public class AstrophotographyApp extends Application {
     zoomPreviewImageView = new ImageView(zoomPreviewImage);
 
     zoomGradientImage = new WritableImage(ZOOM_WIDTH, ZOOM_HEIGHT);
-    zoomGradientDoubleImage = new JavaFXWritableDoubleImage(zoomGradientImage);
+    zoomGradientDoubleImage = new WriteThroughArrayDoubleImage(new JavaFXWritableDoubleImage(zoomGradientImage), ColorModel.RGB);
     zoomGradientImageView = new ImageView(zoomGradientImage);
 
     zoomDeltaImage = new WritableImage(ZOOM_WIDTH, ZOOM_HEIGHT);
@@ -384,14 +456,27 @@ public class AstrophotographyApp extends Application {
     gridPane.add(zoomGradientImageView, 1, rowIndex);
     gridPane.add(new Label("Delta:"), 2, rowIndex);
     gridPane.add(zoomDeltaImageView, 3, rowIndex);
+
+    ComboBox<ColorModel> zoomDeltaColorModelComboBox = new ComboBox<>(FXCollections.observableArrayList(ColorModel.values()));
+    gridPane.add(zoomDeltaColorModelComboBox, 4, rowIndex);
+    Bindings.bindBidirectional(zoomDeltaColorModelComboBox.valueProperty(), zoomDeltaColorModel);
+
+    ComboBox<Number> zoomDeltaSampleIndexComboBox = new ComboBox<>(FXCollections.observableArrayList(0, 1, 2));
+    gridPane.add(zoomDeltaSampleIndexComboBox, 5, rowIndex);
+    Bindings.bindBidirectional(zoomDeltaSampleIndexComboBox.valueProperty(), zoomDeltaSampleIndex);
     rowIndex++;
 
-    VBox fixPointToolbar = new VBox(4);
+    HBox fixPointToolbar = new HBox(4);
     gridPane.add(fixPointToolbar, 0, rowIndex, 4, 1);
     Button addFixPointButton = new Button("Add");
     fixPointToolbar.getChildren().add(addFixPointButton);
     addFixPointButton.setOnAction(event -> {
       fixPoints.add(new FixPoint(zoomCenterX.get(), zoomCenterY.get()));
+    });
+    Button clearFixPointButton = new Button("Clear");
+    fixPointToolbar.getChildren().add(clearFixPointButton);
+    clearFixPointButton.setOnAction(event -> {
+      fixPoints.clear();
     });
     rowIndex++;
 
@@ -428,7 +513,7 @@ public class AstrophotographyApp extends Application {
     gridPane.add(new Label("Sample Radius:"), 0, rowIndex);
     TextField sampleRadiusTextField = new TextField();
     gridPane.add(sampleRadiusTextField, 1, rowIndex);
-    Bindings.bindBidirectional(sampleRadiusTextField.textProperty(), removalFactor, INTEGER_FORMAT);
+    Bindings.bindBidirectional(sampleRadiusTextField.textProperty(), sampleRadius, INTEGER_FORMAT);
     rowIndex++;
 
     gridPane.add(new Label("Removal:"), 0, rowIndex);

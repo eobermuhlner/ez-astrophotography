@@ -2,7 +2,7 @@ package ch.obermuhlner.astro.image;
 
 public class ArrayDoubleImage implements DoubleImage {
 
-  private static final int samplesPerPixel = 3;
+  private static final int SAMPLES_PER_PIXEL = 3;
 
   private final int width;
   private final int height;
@@ -14,7 +14,7 @@ public class ArrayDoubleImage implements DoubleImage {
     this.height = height;
     this.colorModel = colorModel;
 
-    data = new double[width * height * samplesPerPixel];
+    data = new double[width * height * SAMPLES_PER_PIXEL];
   }
 
   @Override
@@ -37,7 +37,7 @@ public class ArrayDoubleImage implements DoubleImage {
       samples = new double[3];
     }
 
-    int index = x + y * width * samplesPerPixel;
+    int index = x + y * width * SAMPLES_PER_PIXEL;
     samples[0] = data[index + 0];
     samples[1] = data[index + 1];
     samples[2] = data[index + 2];
@@ -72,7 +72,7 @@ public class ArrayDoubleImage implements DoubleImage {
 
   @Override
   public void setPixel(int x, int y, ColorModel model, double[] samples) {
-    int index = x + y * width * samplesPerPixel;
+    int index = x + y * width * SAMPLES_PER_PIXEL;
 
     data[index + 0] = samples[0];
     data[index + 1] = samples[1];

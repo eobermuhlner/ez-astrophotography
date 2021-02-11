@@ -1,17 +1,18 @@
 package ch.obermuhlner.astro.gradient;
 
+import ch.obermuhlner.astro.gradient.points.AllPointsFinder;
+import ch.obermuhlner.astro.gradient.points.PointsFinder;
 import ch.obermuhlner.astro.image.ColorModel;
 import ch.obermuhlner.astro.image.DoubleImage;
 import ch.obermuhlner.astro.image.ImageUtil;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Random;
 
 public class GradientRemover {
-
-  private static final boolean DEBUG_GRADIENT = false;
-  private static final boolean DEBUG_SHOW_FIX_POINTS = false;
 
   private static double[][] DEBUG_COLORS = {
       { 1, 0, 0 },
@@ -22,12 +23,17 @@ public class GradientRemover {
       { 0, 1, 1 },
   };
 
+  private PointsFinder pointsFinder = new AllPointsFinder();
   private double interpolationPower = 3.0;
   private double removalFactor = 1.0;
   private boolean adaptiveGradient = false;
 
-  private final List<Point> fixPoints = new ArrayList<>();
-  private final List<double[]> fixColors = new ArrayList<>();
+  private final Map<Point, double[]> mapPointToColor = new HashMap<>();
+
+  public void setPointsFinder(PointsFinder pointsFinder) {
+    this.pointsFinder = pointsFinder;
+    pointsFinder.setFixPoints(mapPointToColor.keySet());
+  }
 
   public void setRemovalFactor(double removalFactor) {
     this.removalFactor = removalFactor;
@@ -48,11 +54,26 @@ public class GradientRemover {
   }
 
   public void setFixPoints(List<Point> fixPoints, List<double[]> fixColors) {
-    this.fixPoints.clear();
-    this.fixPoints.addAll(fixPoints);
+    mapPointToColor.clear();
+    for (int i = 0; i < fixPoints.size(); i++) {
+      mapPointToColor.put(fixPoints.get(i), fixColors.get(i));
+    }
 
-    this.fixColors.clear();
-    this.fixColors.addAll(fixColors);
+    pointsFinder.setFixPoints(fixPoints);
+  }
+
+  private List<Point> getRelevantFixPoints(Point point) {
+    return pointsFinder.getRelevantFixPoints(point);
+  }
+
+  private List<double[]> getRelevantFixColors(List<Point> relevantFixPoints) {
+    List<double[]> result = new ArrayList<>();
+
+    for (Point relevantFixPoint : relevantFixPoints) {
+      result.add(mapPointToColor.get(relevantFixPoint));
+    }
+
+    return result;
   }
 
   public void removeGradient(DoubleImage input, DoubleImage gradient, DoubleImage output) {
@@ -60,9 +81,6 @@ public class GradientRemover {
   }
 
   public void removeGradient(DoubleImage input, DoubleImage gradient, DoubleImage output, int offsetX, int offsetY) {
-    double[] distances = new double[fixPoints.size()];
-    double[] factors = new double[fixPoints.size()];
-
     double[] gradientColor = new double[3];
     double[] inputColor = new double[3];
     double[] outputColor = new double[3];
@@ -71,22 +89,28 @@ public class GradientRemover {
       for (int x = 0; x < input.getWidth(); x++) {
         Point point = new Point(offsetX + x, offsetY + y);
 
+        List<Point> relevantFixPoints = getRelevantFixPoints(point);
+        List<double[]> relevantFixColors = getRelevantFixColors(relevantFixPoints);
+        int n = relevantFixPoints.size();
+        double[] distances = new double[n];
+        double[] factors = new double[n];
+
         double totalDistance = 0;
-        for (int i = 0; i < fixPoints.size(); i++) {
-          Point gradientPoint = fixPoints.get(i);
+        for (int i = 0; i < n; i++) {
+          Point gradientPoint = relevantFixPoints.get(i);
           distances[i] = point.distance(gradientPoint);
           totalDistance += distances[i];
         }
 
         double totalFactor = 0;
-        for (int i = 0; i < fixPoints.size(); i++) {
+        for (int i = 0; i < n; i++) {
           double factor = 1.0 - distances[i] / totalDistance;
           factor = Math.pow(factor, interpolationPower);
           factors[i] = factor;
           totalFactor += factor;
         }
 
-        if (fixPoints.size() == 1) {
+        if (n == 1) {
           factors[0] = 1;
           totalFactor = 1;
         }
@@ -94,9 +118,9 @@ public class GradientRemover {
         gradientColor[ColorModel.R] = 0;
         gradientColor[ColorModel.G] = 0;
         gradientColor[ColorModel.B] = 0;
-        for (int i = 0; i < fixPoints.size(); i++) {
+        for (int i = 0; i < n; i++) {
           double factor = factors[i] / totalFactor;
-          double[] fixColor = fixColors.get(i);
+          double[] fixColor = relevantFixColors.get(i);
           gradientColor[ColorModel.R] += fixColor[ColorModel.R] * factor;
           gradientColor[ColorModel.G] += fixColor[ColorModel.G] * factor;
           gradientColor[ColorModel.B] += fixColor[ColorModel.B] * factor;

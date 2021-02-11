@@ -95,10 +95,11 @@ public class AstrophotographyApp extends Application {
   private final ObjectProperty<ColorModel> zoomDeltaColorModel = new SimpleObjectProperty<>(ColorModel.HSV);
   private final IntegerProperty zoomDeltaSampleIndex = new SimpleIntegerProperty(ColorModel.V);
 
-  private final IntegerProperty sampleRadius = new SimpleIntegerProperty(3);
+  private final IntegerProperty sampleRadius = new SimpleIntegerProperty();
 
-  private final DoubleProperty interpolationPower = new SimpleDoubleProperty(3.0);
-  private final DoubleProperty removalFactor = new SimpleDoubleProperty(1.0);
+  private final ObjectProperty<PointFinderStrategy> pointFinderStrategy = new SimpleObjectProperty<>();
+  private final DoubleProperty interpolationPower = new SimpleDoubleProperty();
+  private final DoubleProperty removalFactor = new SimpleDoubleProperty();
 
   private final List<Color> crosshairColors = Arrays.asList(Color.YELLOW, Color.RED, Color.GREEN, Color.BLUE, Color.TRANSPARENT);
   private final ObjectProperty<Color> crosshairColor = new SimpleObjectProperty<>(crosshairColors.get(0));
@@ -178,6 +179,10 @@ public class AstrophotographyApp extends Application {
     sampleRadius.addListener((observable, oldValue, newValue) -> {
       updateFixPoints();
     });
+    pointFinderStrategy.addListener((observable, oldValue, newValue) -> {
+      gradientRemover.setPointsFinder(pointFinderStrategy.get().getPointsFinder());
+      updateZoom();
+    });
     interpolationPower.addListener((observable, oldValue, newValue) -> {
       gradientRemover.setInterpolationPower(interpolationPower.get());
       updateZoom();
@@ -199,6 +204,15 @@ public class AstrophotographyApp extends Application {
     zoomDeltaSampleIndex.addListener((observable, oldValue, newValue) -> {
       updateZoom();
     });
+
+    initializeValues();
+  }
+
+  private void initializeValues() {
+    sampleRadius.set(3);
+    pointFinderStrategy.set(PointFinderStrategy.All);
+    interpolationPower.set(3.0);
+    removalFactor.set(1.0);
   }
 
   private void updateFixPoints() {
@@ -596,6 +610,12 @@ public class AstrophotographyApp extends Application {
     TextField sampleRadiusTextField = new TextField();
     gridPane.add(sampleRadiusTextField, 1, rowIndex);
     Bindings.bindBidirectional(sampleRadiusTextField.textProperty(), sampleRadius, INTEGER_FORMAT);
+    rowIndex++;
+
+    gridPane.add(new Label("Point Finder:"), 0, rowIndex);
+    ComboBox<PointFinderStrategy> pointFinderComboBox = new ComboBox<>(FXCollections.observableArrayList(PointFinderStrategy.values()));
+    gridPane.add(pointFinderComboBox, 1, rowIndex);
+    Bindings.bindBidirectional(pointFinderComboBox.valueProperty(), pointFinderStrategy);
     rowIndex++;
 
     gridPane.add(new Label("Interpolation Power:"), 0, rowIndex);

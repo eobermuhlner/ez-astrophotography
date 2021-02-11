@@ -1,5 +1,7 @@
 package ch.obermuhlner.astro.gradient;
 
+import java.util.Objects;
+
 public class Point {
   public final int x;
   public final int y;
@@ -9,11 +11,33 @@ public class Point {
     this.y = y;
   }
 
-  public double distance(Point other) {
+  public double distanceSquare(Point other) {
     double dx = other.x - x;
     double dy = other.y - y;
 
-    return Math.sqrt(dx*dx + dy*dy);
+    return dx*dx + dy*dy;
+  }
+
+  public double distance(Point other) {
+    return Math.sqrt(distanceSquare(other));
+  }
+
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
+    }
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    Point point = (Point) o;
+    return x == point.x &&
+        y == point.y;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(x, y);
   }
 
   @Override

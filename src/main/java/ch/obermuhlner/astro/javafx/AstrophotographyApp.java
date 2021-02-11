@@ -50,7 +50,9 @@ import javafx.scene.layout.Pane;
 import javafx.scene.layout.StackPane;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
+import javafx.scene.shape.Shape;
 import javafx.stage.FileChooser;
 import javafx.stage.FileChooser.ExtensionFilter;
 import javafx.stage.Stage;
@@ -97,8 +99,11 @@ public class AstrophotographyApp extends Application {
 
   private final List<Color> crosshairColors = Arrays.asList(Color.YELLOW, Color.RED, Color.GREEN, Color.BLUE, Color.TRANSPARENT);
   private final ObjectProperty<Color> crosshairColor = new SimpleObjectProperty<>(crosshairColors.get(0));
+  private final ObjectProperty<Color> fixPointColor = new SimpleObjectProperty<>(crosshairColors.get(1));
 
   private File inputFile;
+
+  private Pane fixPointPane;
 
   private WritableImage inputImage;
   private DoubleImage inputDoubleImage;
@@ -175,10 +180,23 @@ public class AstrophotographyApp extends Application {
   }
 
   private void updateFixPoints() {
+    fixPointPane.getChildren().clear();
+    for (FixPoint fixPoint : fixPoints) {
+      Circle circle = new Circle(3);
+      circle.setFill(Color.TRANSPARENT);
+      circle.strokeProperty().bind(fixPointColor);
+      double x = fixPoint.x.get() / inputImage.getWidth() * inputImageView.getBoundsInLocal().getWidth();
+      double y = fixPoint.y.get() / inputImage.getHeight() * inputImageView.getBoundsInLocal().getHeight();
+      circle.setCenterX(x);
+      circle.setCenterY(y);
+      fixPointPane.getChildren().add(circle);
+    }
+
     gradientRemover.setFixPoints(
         toPointList(fixPoints),
         inputDoubleImage,
         sampleRadius.get());
+
     updateZoom();
   }
 
@@ -200,19 +218,26 @@ public class AstrophotographyApp extends Application {
       saveImageFile(stage);
     });
 
-    Button crosshairColorButton = new Button();
-    box.getChildren().add(crosshairColorButton);
-    Rectangle rectangle = new Rectangle(10, 10);
-    rectangle.setFill(Color.TRANSPARENT);
-    rectangle.strokeProperty().bind(crosshairColor);
-    crosshairColorButton.setGraphic(rectangle);
-    crosshairColorButton.setOnAction(event -> {
-      int index = crosshairColors.indexOf(crosshairColor.get());
-      index = (index + 1) % crosshairColors.size();
-      crosshairColor.setValue(crosshairColors.get(index));
-    });
+    box.getChildren().add(createColorButton(crosshairColor, new Rectangle(10, 10)));
+
+    box.getChildren().add(createColorButton(fixPointColor, new Circle(3)));
 
     return box;
+  }
+
+  private Button createColorButton(ObjectProperty<Color> colorProperty, Shape shape) {
+    Button button = new Button();
+    shape.setFill(Color.TRANSPARENT);
+    shape.strokeProperty().bind(colorProperty);
+    button.setGraphic(shape);
+
+    button.setOnAction(event -> {
+      int index = crosshairColors.indexOf(colorProperty.get());
+      index = (index + 1) % crosshairColors.size();
+      colorProperty.setValue(crosshairColors.get(index));
+    });
+
+    return button;
   }
 
   private void openImageFile(Stage stage) {
@@ -305,8 +330,10 @@ public class AstrophotographyApp extends Application {
   private Node createImageViewer() {
     VBox box = new VBox(2);
 
+    fixPointPane = new Pane();
+    fixPointPane.setMouseTransparent(true);
     inputImageView = new ImageView();
-    box.getChildren().add(withZoomRectangle(inputImageView));
+    box.getChildren().add(withZoomRectangle(inputImageView, fixPointPane));
 
     inputImageView.setPreserveRatio(true);
     inputImageView.setFitWidth(IMAGE_WIDTH);
@@ -528,8 +555,9 @@ public class AstrophotographyApp extends Application {
     return box;
   }
 
-  private Node withZoomRectangle(ImageView imageView) {
+  private Node withZoomRectangle(ImageView imageView, Pane additionalPane) {
     Rectangle rectangle = new Rectangle();
+    rectangle.setMouseTransparent(true);
     rectangle.strokeProperty().bind(crosshairColor);
     rectangle.setFill(Color.TRANSPARENT);
 
@@ -543,7 +571,7 @@ public class AstrophotographyApp extends Application {
       updateZoomRectangle(rectangle);
     });
 
-    return new Pane(imageView, rectangle);
+    return new Pane(imageView, rectangle, additionalPane);
   }
 
   private void updateZoomRectangle(Rectangle rectangle) {
@@ -561,6 +589,7 @@ public class AstrophotographyApp extends Application {
     IntegerBinding size = sampleRadius.multiply(2).add(1);
 
     Rectangle rectangle = new Rectangle();
+    rectangle.setMouseTransparent(true);
     rectangle.widthProperty().bind(size);
     rectangle.heightProperty().bind(size);
     rectangle.strokeProperty().bind(crosshairColor);

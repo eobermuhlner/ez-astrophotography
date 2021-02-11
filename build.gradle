@@ -24,7 +24,6 @@ javafx {
 
 dependencies {
     //implementation 'mil.nga:tiff:2.0.2'
-    //implementation 'org.apache.commons:commons-imaging:1.0-alpha2'
 
     testImplementation 'junit:junit:4.12'
 }

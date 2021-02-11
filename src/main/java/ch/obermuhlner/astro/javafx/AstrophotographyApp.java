@@ -34,6 +34,8 @@ import javafx.scene.control.ComboBox;
 import javafx.scene.control.ContextMenu;
 import javafx.scene.control.Label;
 import javafx.scene.control.MenuItem;
+import javafx.scene.control.Tab;
+import javafx.scene.control.TabPane;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableColumn.CellDataFeatures;
 import javafx.scene.control.TableRow;
@@ -126,6 +128,14 @@ public class AstrophotographyApp extends Application {
   private DoubleImage zoomDeltaDoubleImage;
   private ImageView zoomDeltaImageView;
 
+  private WritableImage gradientImage;
+  private DoubleImage gradientDoubleImage;
+  private ImageView gradientImageView;
+
+  private WritableImage outputImage;
+  private DoubleImage outputDoubleImage;
+  private ImageView outputImageView;
+
   private final ObservableList<FixPoint> fixPoints = FXCollections.observableArrayList();
 
   @Override
@@ -136,14 +146,25 @@ public class AstrophotographyApp extends Application {
     BorderPane borderPane = new BorderPane();
     root.getChildren().add(borderPane);
 
-    Node toolbar = createToolbar(primaryStage);
-    borderPane.setTop(toolbar);
+    borderPane.setTop(createToolbar(primaryStage));
 
-    Node imageViewer = createImageViewer();
-    borderPane.setCenter(imageViewer);
+    TabPane imageTabPane = new TabPane();
+    borderPane.setCenter(imageTabPane);
+    imageTabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
 
-    Node editor = createEditor();
-    borderPane.setRight(editor);
+    Tab inputTab = new Tab("Input", createInputImageViewer());
+    imageTabPane.getTabs().add(inputTab);
+    Tab gradientTab = new Tab("Gradient", createGradientImageViewer());
+    imageTabPane.getTabs().add(gradientTab);
+    Tab outputTab = new Tab("Output", createOutputImageViewer());
+    imageTabPane.getTabs().add(outputTab);
+    borderPane.setRight(createEditor());
+
+    imageTabPane.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+      if (newValue != inputTab) {
+        gradientRemover.removeGradient(inputDoubleImage, gradientDoubleImage, outputDoubleImage);
+      }
+    });
 
     primaryStage.setScene(scene);
     primaryStage.show();
@@ -309,11 +330,14 @@ public class AstrophotographyApp extends Application {
   private void loadImage(File file) throws IOException {
     inputDoubleImage = ImageReader.read(file, ImageQuality.High);
 
-    inputImage = new WritableImage(inputDoubleImage.getWidth(), inputDoubleImage.getHeight());
+    int width = inputDoubleImage.getWidth();
+    int height = inputDoubleImage.getHeight();
+
+    inputImage = new WritableImage(width, height);
     double[] rgb = new double[3];
     PixelWriter pw = inputImage.getPixelWriter();
-    for (int x = 0; x < inputDoubleImage.getWidth(); x++) {
-      for (int y = 0; y < inputDoubleImage.getHeight(); y++) {
+    for (int x = 0; x < width; x++) {
+      for (int y = 0; y < height; y++) {
         inputDoubleImage.getPixel(x, y, ColorModel.RGB, rgb);
         pw.setArgb(x, y, 0xff000000 | ColorUtil.toIntRGB(rgb));
       }
@@ -321,7 +345,15 @@ public class AstrophotographyApp extends Application {
 
     inputImageView.setImage(inputImage);
 
-    setZoom(inputDoubleImage.getWidth() / 2, inputDoubleImage.getHeight() / 2);
+    setZoom(width / 2, height / 2);
+
+    gradientImage = new WritableImage(width, height);
+    gradientDoubleImage = new JavaFXWritableDoubleImage(gradientImage);
+    gradientImageView.setImage(gradientImage);
+
+    outputImage = new WritableImage(width, height);
+    outputDoubleImage = new JavaFXWritableDoubleImage(outputImage);
+    outputImageView.setImage(outputImage);
   }
 
   private List<Point> toPointList(ObservableList<FixPoint> fixPoints) {
@@ -332,7 +364,7 @@ public class AstrophotographyApp extends Application {
     return points;
   }
 
-  private Node createImageViewer() {
+  private Node createInputImageViewer() {
     VBox box = new VBox(2);
 
     fixPointPane = new Pane();
@@ -350,13 +382,39 @@ public class AstrophotographyApp extends Application {
       int zoomX = (int) (event.getX() * inputImage.getWidth() / imageViewWidth);
       int zoomY = (int) (event.getY() * inputImage.getHeight() / imageViewHeight);
 
-      zoomX = Math.max(zoomX, ZOOM_WIDTH/2);
-      zoomY = Math.max(zoomY, ZOOM_HEIGHT/2);
-      zoomX = Math.min(zoomX, (int) inputImage.getWidth() - ZOOM_WIDTH/2);
-      zoomY = Math.min(zoomY, (int) inputImage.getHeight() - ZOOM_HEIGHT/2);
+      zoomX = Math.max(zoomX, 0);
+      zoomY = Math.max(zoomY, 0);
+      zoomX = Math.min(zoomX, (int) inputImage.getWidth());
+      zoomY = Math.min(zoomY, (int) inputImage.getHeight());
 
       setZoom(zoomX, zoomY);
     });
+
+    return box;
+  }
+
+  private Node createGradientImageViewer() {
+    VBox box = new VBox(2);
+
+    gradientImageView = new ImageView();
+    box.getChildren().add(gradientImageView);
+
+    gradientImageView.setPreserveRatio(true);
+    gradientImageView.setFitWidth(IMAGE_WIDTH);
+    gradientImageView.setFitHeight(IMAGE_HEIGHT);
+
+    return box;
+  }
+
+  private Node createOutputImageViewer() {
+    VBox box = new VBox(2);
+
+    outputImageView = new ImageView();
+    box.getChildren().add(outputImageView);
+
+    outputImageView.setPreserveRatio(true);
+    outputImageView.setFitWidth(IMAGE_WIDTH);
+    outputImageView.setFitHeight(IMAGE_HEIGHT);
 
     return box;
   }

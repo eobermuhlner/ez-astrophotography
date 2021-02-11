@@ -1,4 +1,4 @@
-package ch.obermuhlner.astro;
+package ch.obermuhlner.astro.gradient;
 
 public class Point {
   public final int x;

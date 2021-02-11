@@ -1,7 +1,7 @@
 package ch.obermuhlner.astro.javafx;
 
-import ch.obermuhlner.astro.GradientRemover;
-import ch.obermuhlner.astro.Point;
+import ch.obermuhlner.astro.gradient.GradientRemover;
+import ch.obermuhlner.astro.gradient.Point;
 import ch.obermuhlner.astro.image.ColorModel;
 import ch.obermuhlner.astro.image.ColorUtil;
 import ch.obermuhlner.astro.image.DoubleImage;
@@ -39,6 +39,7 @@ import javafx.scene.control.TableColumn.CellDataFeatures;
 import javafx.scene.control.TableRow;
 import javafx.scene.control.TableView;
 import javafx.scene.control.TextField;
+import javafx.scene.control.Tooltip;
 import javafx.scene.image.ImageView;
 import javafx.scene.image.PixelWriter;
 import javafx.scene.image.WritableImage;
@@ -218,9 +219,13 @@ public class AstrophotographyApp extends Application {
       saveImageFile(stage);
     });
 
-    box.getChildren().add(createColorButton(crosshairColor, new Rectangle(10, 10)));
+    Button crosshairColorButton = createColorButton(crosshairColor, new Rectangle(10, 10));
+    crosshairColorButton.setTooltip(new Tooltip("Toggles the color of the crosshair in the zoom images."));
+    box.getChildren().add(crosshairColorButton);
 
-    box.getChildren().add(createColorButton(fixPointColor, new Circle(3)));
+    Button fixPointColorButton = createColorButton(fixPointColor, new Circle(3));
+    fixPointColorButton.setTooltip(new Tooltip("Toggles the color of the fix point markers in the input images."));
+    box.getChildren().add(fixPointColorButton);
 
     return box;
   }

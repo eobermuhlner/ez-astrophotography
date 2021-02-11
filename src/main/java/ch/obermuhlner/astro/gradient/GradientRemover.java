@@ -1,4 +1,4 @@
-package ch.obermuhlner.astro;
+package ch.obermuhlner.astro.gradient;
 
 import ch.obermuhlner.astro.image.ColorModel;
 import ch.obermuhlner.astro.image.DoubleImage;

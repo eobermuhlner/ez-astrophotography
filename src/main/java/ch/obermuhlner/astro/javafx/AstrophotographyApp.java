@@ -17,6 +17,9 @@ import javafx.beans.binding.IntegerBinding;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.ObjectProperty;
+import javafx.beans.property.ReadOnlyDoubleWrapper;
+import javafx.beans.property.ReadOnlyIntegerWrapper;
+import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleIntegerProperty;
@@ -37,6 +40,7 @@ import javafx.scene.control.MenuItem;
 import javafx.scene.control.Spinner;
 import javafx.scene.control.Tab;
 import javafx.scene.control.TabPane;
+import javafx.scene.control.TableCell;
 import javafx.scene.control.TableColumn;
 import javafx.scene.control.TableColumn.CellDataFeatures;
 import javafx.scene.control.TableRow;
@@ -252,8 +256,8 @@ public class AstrophotographyApp extends Application {
       Circle circle = new Circle(3);
       circle.setFill(Color.TRANSPARENT);
       circle.strokeProperty().bind(fixPointColor);
-      double x = fixPoint.x.get() / inputImage.getWidth() * inputImageView.getBoundsInLocal().getWidth();
-      double y = fixPoint.y.get() / inputImage.getHeight() * inputImageView.getBoundsInLocal().getHeight();
+      double x = fixPoint.x / inputImage.getWidth() * inputImageView.getBoundsInLocal().getWidth();
+      double y = fixPoint.y / inputImage.getHeight() * inputImageView.getBoundsInLocal().getHeight();
       circle.setCenterX(x);
       circle.setCenterY(y);
       inputDecorationsPane.getChildren().add(circle);
@@ -409,7 +413,7 @@ public class AstrophotographyApp extends Application {
   private List<Point> toPointList(ObservableList<FixPoint> fixPoints) {
     List<Point> points = new ArrayList<>();
     for (FixPoint fixPoint : fixPoints) {
-      points.add(new Point(fixPoint.x.get(), fixPoint.y.get()));
+      points.add(new Point(fixPoint.x, fixPoint.y));
     }
     return points;
   }
@@ -635,7 +639,10 @@ public class AstrophotographyApp extends Application {
         Button addFixPointButton = new Button("Add");
         fixPointToolbar.getChildren().add(addFixPointButton);
         addFixPointButton.setOnAction(event -> {
-          fixPoints.add(new FixPoint(zoomCenterX.get(), zoomCenterY.get()));
+          int x = zoomCenterX.get();
+          int y = zoomCenterY.get();
+          double[] color = ImageUtil.averagePixel(inputDoubleImage, x, y, sampleRadius.get(), ColorModel.RGB);
+          fixPoints.add(new FixPoint(x, y, new Color(color[0], color[1], color[2], 1.0)));
         });
 
         Button clearFixPointButton = new Button("Clear");
@@ -657,7 +664,7 @@ public class AstrophotographyApp extends Application {
             TableRow<FixPoint> tableRow = new TableRow<>();
             MenuItem gotoMenuItem = new MenuItem("Go To");
             gotoMenuItem.setOnAction(event -> {
-              setZoom(tableRow.getItem().x.get(), tableRow.getItem().y.get());
+              setZoom(tableRow.getItem().x, tableRow.getItem().y);
             });
             MenuItem removeMenuItem = new MenuItem("Remove");
             removeMenuItem.setOnAction(event -> {
@@ -671,10 +678,24 @@ public class AstrophotographyApp extends Application {
           }
         });
         addTableColumn(fixPointTableView, "X", 50, fixPoint -> {
-          return new ReadOnlyStringWrapper(String.valueOf(fixPoint.xProperty().get()));
+          return new ReadOnlyIntegerWrapper(fixPoint.x);
         });
         addTableColumn(fixPointTableView, "Y", 50, fixPoint -> {
-          return new ReadOnlyStringWrapper(String.valueOf(fixPoint.yProperty().get()));
+          return new ReadOnlyIntegerWrapper(fixPoint.y);
+        });
+        addTableColumn(fixPointTableView, "Color", 50, fixPoint -> {
+          Rectangle rectangle = new Rectangle(15, 15);
+          rectangle.setFill(fixPoint.color);
+          return new ReadOnlyObjectWrapper<>(rectangle);
+        });
+        addTableColumn(fixPointTableView, "Red", 80, fixPoint -> {
+          return new ReadOnlyStringWrapper(PERCENT_FORMAT.format(fixPoint.color.getRed()));
+        });
+        addTableColumn(fixPointTableView, "Green", 80, fixPoint -> {
+          return new ReadOnlyStringWrapper(PERCENT_FORMAT.format(fixPoint.color.getGreen()));
+        });
+        addTableColumn(fixPointTableView, "Blue", 80, fixPoint -> {
+          return new ReadOnlyStringWrapper(PERCENT_FORMAT.format(fixPoint.color.getBlue()));
         });
         rowIndex++;
       }
@@ -808,6 +829,35 @@ public class AstrophotographyApp extends Application {
     return column;
   }
 
+  private <E, V> TableColumn<E, V> addTableColumn(TableView<E> tableView, String header, double prefWidth, Function<E, ObservableValue<V>> valueFunction, Function<V, Node> nodeFunction) {
+    TableColumn<E, V> column = new TableColumn<>(header);
+    column.setPrefWidth(prefWidth);
+    column.setCellValueFactory(new Callback<TableColumn.CellDataFeatures<E,V>, ObservableValue<V>>() {
+      @Override
+      public ObservableValue<V> call(CellDataFeatures<E, V> cellData) {
+        return valueFunction.apply(cellData.getValue());
+      }
+    });
+    column.setCellFactory(new Callback<TableColumn<E, V>, TableCell<E, V>>() {
+      @Override
+      public TableCell<E, V> call(TableColumn<E, V> cellColumn) {
+        return new TableCell<E, V>() {
+          @Override
+          protected void updateItem(V item, boolean empty) {
+            if (empty) {
+              setGraphic(null);
+            } else {
+              setGraphic(nodeFunction.apply(item));
+            }
+            super.updateItem(item, empty);
+          }
+        };
+      }
+    });
+    tableView.getColumns().add(column);
+    return column;
+  }
+
   Double zoomDragX = null;
   Double zoomDragY = null;
   private void setupZoomDragEvents(ImageView imageView) {
@@ -859,20 +909,14 @@ public class AstrophotographyApp extends Application {
   }
 
   private static class FixPoint {
-    private final IntegerProperty x = new SimpleIntegerProperty();
-    private final IntegerProperty y = new SimpleIntegerProperty();
+    public final int x;
+    public final int y;
+    public final Color color;
 
-    public FixPoint(int x, int y) {
-      this.x.set(x);
-      this.y.set(y);
+    public FixPoint(int x, int y, Color color) {
+      this.x = x;
+      this.y = y;
+      this.color = color;
     }
-
-    public IntegerProperty xProperty() {
-      return x;
-    };
-
-    public IntegerProperty yProperty() {
-      return y;
-    };
   }
 }

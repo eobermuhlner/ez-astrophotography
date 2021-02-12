@@ -47,7 +47,7 @@ public class GradientRemover {
     List<double[]> fixColors = new ArrayList<>();
 
     for (Point fixPoint : fixPoints) {
-      fixColors.add(getAverageColor(image, fixPoint.x, fixPoint.y, sampleRadius));
+      fixColors.add(ImageUtil.averagePixel(image, fixPoint.x, fixPoint.y, sampleRadius, ColorModel.RGB));
     }
 
     setFixPoints(fixPoints, fixColors);
@@ -161,26 +161,6 @@ public class GradientRemover {
     }
     Random random = new Random(i);
     return new double[] { random.nextDouble(), random.nextDouble(), random.nextDouble() };
-  }
-
-  private double[] getAverageColor(DoubleImage image, int x, int y, int sampleRadius) {
-    int n = 0;
-    double r = 0;
-    double g = 0;
-    double b = 0;
-    double[] rgb = new double[3];
-    for (int sy = y-sampleRadius; sy <= y+sampleRadius; sy++) {
-      for (int sx = x-sampleRadius; sx < x+sampleRadius; sx++) {
-        if (ImageUtil.isInsideImage(image, sx, sy)) {
-          image.getPixel(sx, sy, ColorModel.RGB, rgb);
-          r += rgb[ColorModel.R];
-          g += rgb[ColorModel.G];
-          b += rgb[ColorModel.B];
-          n++;
-        }
-      }
-    }
-    return new double[] { r/n, g/n, b/n };
   }
 
   private double smoothstep(double edge0, double edge1, double x) {

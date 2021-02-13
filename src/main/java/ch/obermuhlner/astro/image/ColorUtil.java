@@ -10,6 +10,10 @@ public class ColorUtil {
     return (rr * 0x100 + gg) * 0x100 + bb;
   }
 
+  public static int toIntARGB(double[] rgb) {
+    return 0xff000000 | toIntRGB(rgb);
+  }
+
   public static double[] convertRGBtoHSV(double[] rgb, double[] hsv) {
     return convertRGBtoHSV(rgb, hsv, 0, 0);
   }

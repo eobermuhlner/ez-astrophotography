@@ -56,7 +56,7 @@ public class GradientRemover {
     List<double[]> fixColors = new ArrayList<>();
 
     for (Point fixPoint : fixPoints) {
-      fixColors.add(ImageUtil.averagePixel(image, fixPoint.x, fixPoint.y, sampleRadius, ColorModel.RGB));
+      fixColors.add(ImageUtil.averagePixel(image, fixPoint.x, fixPoint.y, sampleRadius, ColorModel.RGB, null));
     }
 
     setFixPoints(fixPoints, fixColors);

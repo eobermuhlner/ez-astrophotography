@@ -103,6 +103,8 @@ public class AstrophotographyApp extends Application {
   private final DoubleProperty zoomDeltaSampleFactor = new SimpleDoubleProperty();
 
   private final IntegerProperty sampleRadius = new SimpleIntegerProperty();
+  private final ObjectProperty<Color> samplePixelColor = new SimpleObjectProperty<>();
+  private final ObjectProperty<Color> sampleAverageColor = new SimpleObjectProperty<>();
 
   private final ObjectProperty<PointFinderStrategy> pointFinderStrategy = new SimpleObjectProperty<>();
   private final DoubleProperty interpolationPower = new SimpleDoubleProperty();
@@ -400,7 +402,7 @@ public class AstrophotographyApp extends Application {
     for (int x = 0; x < width; x++) {
       for (int y = 0; y < height; y++) {
         inputDoubleImage.getPixel(x, y, ColorModel.RGB, rgb);
-        pw.setArgb(x, y, 0xff000000 | ColorUtil.toIntRGB(rgb));
+        pw.setArgb(x, y, ColorUtil.toIntARGB(rgb));
       }
     }
 
@@ -533,6 +535,13 @@ public class AstrophotographyApp extends Application {
     int zoomOffsetX = zoomX - ZOOM_WIDTH/2;
     int zoomOffsetY = zoomY - ZOOM_HEIGHT/2;
 
+    double[] rgb = new double[3];
+    ColorUtil.toIntARGB(inputDoubleImage.getPixel(zoomX, zoomY, ColorModel.RGB, rgb));
+    samplePixelColor.set(new Color(rgb[ColorModel.R], rgb[ColorModel.G], rgb[ColorModel.B], 1.0));
+
+    ImageUtil.averagePixel(inputDoubleImage, zoomX, zoomY, sampleRadius.get(), ColorModel.RGB, rgb);
+    sampleAverageColor.set(new Color(rgb[ColorModel.R], rgb[ColorModel.G], rgb[ColorModel.B], 1.0));
+
     ImageUtil.copyPixels(
         inputDoubleImage,
         zoomOffsetX,
@@ -650,7 +659,15 @@ public class AstrophotographyApp extends Application {
         sampleRadiusSpinner.setPrefWidth(80);
         sampleRadius.bind(sampleRadiusSpinner.valueProperty());
 
-        // TODO show sample color
+        sampleHBox.getChildren().add(new Label("Pixel:"));
+        Rectangle samplePixelRectangle = new Rectangle(15, 15);
+        sampleHBox.getChildren().add(samplePixelRectangle);
+        samplePixelRectangle.fillProperty().bind(samplePixelColor);
+
+        sampleHBox.getChildren().add(new Label("Avg:"));
+        Rectangle sampleAverageRectangle = new Rectangle(15, 15);
+        sampleHBox.getChildren().add(sampleAverageRectangle);
+        sampleAverageRectangle.fillProperty().bind(sampleAverageColor);
 
         rowIndex++;
       }
@@ -664,7 +681,7 @@ public class AstrophotographyApp extends Application {
         addFixPointButton.setOnAction(event -> {
           int x = zoomCenterX.get();
           int y = zoomCenterY.get();
-          double[] color = ImageUtil.averagePixel(inputDoubleImage, x, y, sampleRadius.get(), ColorModel.RGB);
+          double[] color = ImageUtil.averagePixel(inputDoubleImage, x, y, sampleRadius.get(), ColorModel.RGB, null);
           fixPoints.add(new FixPoint(x, y, new Color(color[0], color[1], color[2], 1.0)));
         });
 

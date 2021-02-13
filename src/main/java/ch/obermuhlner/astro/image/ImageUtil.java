@@ -24,12 +24,15 @@ public class ImageUtil {
     return x >= 0 && y >= 0 && x < image.getWidth() && y < image.getHeight();
   }
 
-  public static double[] averagePixel(DoubleImage image, int x, int y, int sampleRadius, ColorModel colorModel) {
+  public static double[] averagePixel(DoubleImage image, int x, int y, int sampleRadius, ColorModel colorModel, double[] color) {
+    if (color == null) {
+      color = new double[3];
+    }
+
     int n = 0;
     double sample0 = 0;
     double sample1 = 0;
     double sample2 = 0;
-    double[] color = new double[3];
     for (int sy = y-sampleRadius; sy <= y+sampleRadius; sy++) {
       for (int sx = x-sampleRadius; sx < x+sampleRadius; sx++) {
         if (ImageUtil.isInsideImage(image, sx, sy)) {

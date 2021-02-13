@@ -51,8 +51,7 @@ public class JavaFXWritableDoubleImage implements DoubleImage {
       rgbSamples = samples;
     }
 
-    int rgb = ColorUtil.toIntRGB(rgbSamples);
-    image.getPixelWriter().setArgb(x, y, 0xff000000 | rgb);
+    image.getPixelWriter().setArgb(x, y, ColorUtil.toIntARGB(rgbSamples));
   }
 
 }

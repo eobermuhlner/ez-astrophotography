@@ -48,7 +48,6 @@ public class AwtBufferedDoubleImage implements DoubleImage {
       rgbSamples = samples;
     }
 
-    int rgb = ColorUtil.toIntRGB(rgbSamples);
-    image.setRGB(x, y, rgb);
+    image.setRGB(x, y, ColorUtil.toIntRGB(rgbSamples));
   }
 }

@@ -1,5 +1,8 @@
 package ch.obermuhlner.astro.gradient;
 
+import ch.obermuhlner.astro.gradient.correction.LinearSampleSubtraction;
+import ch.obermuhlner.astro.gradient.correction.SampleSubtraction;
+import ch.obermuhlner.astro.gradient.correction.SplineSampleSubtraction;
 import ch.obermuhlner.astro.gradient.points.AllPointsFinder;
 import ch.obermuhlner.astro.gradient.points.PointsFinder;
 import ch.obermuhlner.astro.image.ColorModel;
@@ -28,6 +31,8 @@ public class GradientRemover {
   private double removalFactor = 1.0;
   private boolean adaptiveGradient = false;
 
+  private SampleSubtraction sampleSubtraction = new LinearSampleSubtraction();
+
   private final Map<Point, double[]> mapPointToColor = new HashMap<>();
 
   public void setPointsFinder(PointsFinder pointsFinder) {
@@ -41,6 +46,10 @@ public class GradientRemover {
 
   public void setInterpolationPower(double interpolationPower) {
     this.interpolationPower = interpolationPower;
+  }
+
+  public void setSampleSubtraction(SampleSubtraction sampleSubtraction) {
+    this.sampleSubtraction = sampleSubtraction;
   }
 
   public void setFixPoints(List<Point> fixPoints, DoubleImage image, int sampleRadius) {
@@ -144,9 +153,9 @@ public class GradientRemover {
           gradient.setPixel(x, y, ColorModel.RGB, gradientColor);
         }
 
-        outputColor[ColorModel.R] = inputColor[ColorModel.R] - gradientColor[ColorModel.R];
-        outputColor[ColorModel.G] = inputColor[ColorModel.G] - gradientColor[ColorModel.G];
-        outputColor[ColorModel.B] = inputColor[ColorModel.B] - gradientColor[ColorModel.B];
+        outputColor[ColorModel.R] = sampleSubtraction.subtract(inputColor[ColorModel.R], gradientColor[ColorModel.R]);
+        outputColor[ColorModel.G] = sampleSubtraction.subtract(inputColor[ColorModel.G], gradientColor[ColorModel.G]);
+        outputColor[ColorModel.B] = sampleSubtraction.subtract(inputColor[ColorModel.B], gradientColor[ColorModel.B]);
 
         if (output != null) {
           output.setPixel(x, y, ColorModel.RGB, outputColor);

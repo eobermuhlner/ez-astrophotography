@@ -2,6 +2,8 @@ package ch.obermuhlner.astro.javafx;
 
 import ch.obermuhlner.astro.gradient.GradientRemover;
 import ch.obermuhlner.astro.gradient.Point;
+import ch.obermuhlner.astro.gradient.correction.SampleSubtraction;
+import ch.obermuhlner.astro.gradient.correction.SimpleSampleSubtraction;
 import ch.obermuhlner.astro.image.ColorModel;
 import ch.obermuhlner.astro.image.ColorUtil;
 import ch.obermuhlner.astro.image.DoubleImage;
@@ -17,7 +19,6 @@ import javafx.beans.binding.IntegerBinding;
 import javafx.beans.property.DoubleProperty;
 import javafx.beans.property.IntegerProperty;
 import javafx.beans.property.ObjectProperty;
-import javafx.beans.property.ReadOnlyDoubleWrapper;
 import javafx.beans.property.ReadOnlyIntegerWrapper;
 import javafx.beans.property.ReadOnlyObjectWrapper;
 import javafx.beans.property.ReadOnlyStringWrapper;
@@ -99,12 +100,14 @@ public class AstrophotographyApp extends Application {
   private final IntegerProperty zoomCenterY = new SimpleIntegerProperty();
 
   private final ObjectProperty<SampleChannel> zoomDeltaSampleChannel = new SimpleObjectProperty<>(SampleChannel.Brightness);
+  private final DoubleProperty zoomDeltaSampleFactor = new SimpleDoubleProperty();
 
   private final IntegerProperty sampleRadius = new SimpleIntegerProperty();
 
   private final ObjectProperty<PointFinderStrategy> pointFinderStrategy = new SimpleObjectProperty<>();
   private final DoubleProperty interpolationPower = new SimpleDoubleProperty();
   private final DoubleProperty removalFactor = new SimpleDoubleProperty();
+  private final ObjectProperty<SampleSubtractionStrategy> sampleSubtractionStrategy = new SimpleObjectProperty<>();
 
   private final List<Color> crosshairColors = Arrays.asList(Color.YELLOW, Color.RED, Color.GREEN, Color.BLUE, Color.TRANSPARENT);
   private final ObjectProperty<Color> crosshairColor = new SimpleObjectProperty<>(crosshairColors.get(0));
@@ -185,12 +188,13 @@ public class AstrophotographyApp extends Application {
         if (oldValue == inputTab) {
           gradientRemover.removeGradient(inputDoubleImage, gradientDoubleImage, outputDoubleImage);
 
-          calculateDiffImage(
+          calculateDeltaImage(
               inputDoubleImage,
               gradientDoubleImage,
               deltaDoubleImage,
               zoomDeltaSampleChannel.get().getColorModel(),
-              zoomDeltaSampleChannel.get().getSampleIndex());
+              zoomDeltaSampleChannel.get().getSampleIndex(),
+              zoomDeltaSampleFactor.get());
         }
       });
 
@@ -230,6 +234,10 @@ public class AstrophotographyApp extends Application {
       gradientRemover.setRemovalFactor(removalFactor.get());
       updateZoom();
     });
+    sampleSubtractionStrategy.addListener((observable, oldValue, newValue) -> {
+      gradientRemover.setSampleSubtraction(sampleSubtractionStrategy.get().getSampleSubtraction());
+      updateZoom();
+    });
 
     zoomCenterX.addListener((observable, oldValue, newValue) -> {
       updateZoom();
@@ -238,7 +246,10 @@ public class AstrophotographyApp extends Application {
       updateZoom();
     });
     zoomDeltaSampleChannel.addListener((observable, oldValue, newValue) -> {
-      updateZoom();
+      updateZoomDelta();
+    });
+    zoomDeltaSampleFactor.addListener((observable, oldValue, newValue) -> {
+      updateZoomDelta();
     });
 
     initializeValues();
@@ -248,6 +259,7 @@ public class AstrophotographyApp extends Application {
     pointFinderStrategy.set(PointFinderStrategy.All);
     interpolationPower.set(3.0);
     removalFactor.set(1.0);
+    sampleSubtractionStrategy.set(SampleSubtractionStrategy.Spline_1);
   }
 
   private void updateFixPoints() {
@@ -539,33 +551,44 @@ public class AstrophotographyApp extends Application {
         zoomOffsetX,
         zoomOffsetY);
 
-    calculateDiffImage(
+    updateZoomDelta();
+  }
+
+  private void updateZoomDelta() {
+    calculateDeltaImage(
         zoomInputDoubleImage,
         zoomGradientDoubleImage,
         zoomDeltaDoubleImage,
         zoomDeltaSampleChannel.get().getColorModel(),
-        zoomDeltaSampleChannel.get().getSampleIndex());
+        zoomDeltaSampleChannel.get().getSampleIndex(),
+        zoomDeltaSampleFactor.get());
   }
 
-  private void calculateDiffImage(DoubleImage image1, DoubleImage image2, DoubleImage deltaImage, ColorModel colorModel, int sampleIndex) {
+  private void calculateDeltaImage(DoubleImage image1, DoubleImage image2, DoubleImage deltaImage, ColorModel colorModel, int sampleIndex, double sampleFactor) {
     double[] sample1 = new double[3];
     double[] sample2 = new double[3];
+    double[] output = new double[3];
     double[] rgb = new double[3];
+
+    SampleSubtraction sampleSubtraction = new SimpleSampleSubtraction();
 
     for (int y = 0; y < image1.getHeight(); y++) {
       for (int x = 0; x < image1.getWidth(); x++) {
-        image1.getPixel(x, y, colorModel, sample1);
-        image2.getPixel(x, y, colorModel, sample2);
-        double delta = ColorUtil.sampleDistance(sample1, sample2, colorModel, sampleIndex, true);
+
+        image1.getPixel(x, y, ColorModel.RGB, sample1);
+        image2.getPixel(x, y, ColorModel.RGB, sample2);
+        sampleSubtraction.subtract(sample1, sample2, output);
+
+        double delta = ColorUtil.sampleDistance(output, colorModel, sampleIndex, true);
 
         if (delta < 0) {
-          rgb[ColorModel.R] = Math.min(1, -delta * 20);
-          rgb[ColorModel.G] = Math.min(1, -delta * 10);
-          rgb[ColorModel.B] = Math.min(1, -delta * 10);
+          rgb[ColorModel.R] = Math.min(1, -delta * sampleFactor);
+          rgb[ColorModel.G] = Math.min(1, -delta * sampleFactor * 0.5);
+          rgb[ColorModel.B] = Math.min(1, -delta * sampleFactor * 0.5);
         } else if (delta >= 0) {
-          rgb[ColorModel.R] = Math.min(1, delta * 10);
-          rgb[ColorModel.G] = Math.min(1, delta * 10);
-          rgb[ColorModel.B] = Math.min(1, delta * 20);
+          rgb[ColorModel.R] = Math.min(1, delta * sampleFactor * 0.5);
+          rgb[ColorModel.G] = Math.min(1, delta * sampleFactor * 0.5);
+          rgb[ColorModel.B] = Math.min(1, delta * sampleFactor);
         }
 
         deltaImage.setPixel(x, y, ColorModel.RGB, rgb);
@@ -732,6 +755,15 @@ public class AstrophotographyApp extends Application {
           Bindings.bindBidirectional(removalFactorTextField.textProperty(), removalFactor, PERCENT_FORMAT);
           algorithmRowIndex++;
         }
+
+        {
+          algorithmGridPane.add(new Label("Sample Subtraction:"), 0, algorithmRowIndex);
+          ComboBox<SampleSubtractionStrategy> sampleSubtractionComboBox = new ComboBox<>(FXCollections
+              .observableArrayList(SampleSubtractionStrategy.values()));
+          algorithmGridPane.add(sampleSubtractionComboBox, 1, algorithmRowIndex);
+          Bindings.bindBidirectional(sampleSubtractionComboBox.valueProperty(), sampleSubtractionStrategy);
+          algorithmRowIndex++;
+        }
       }
 
       {
@@ -754,6 +786,12 @@ public class AstrophotographyApp extends Application {
             .observableArrayList(SampleChannel.values()));
         hbox.getChildren().add(zoomDeltaColorModelComboBox);
         Bindings.bindBidirectional(zoomDeltaColorModelComboBox.valueProperty(), zoomDeltaSampleChannel);
+
+        Spinner<Number> zoomDeltaSampleFactorSpinner = new Spinner<>(1.0, 50.0, 20.0);
+        hbox.getChildren().add(zoomDeltaSampleFactorSpinner);
+        zoomDeltaSampleFactorSpinner.getStyleClass().add(Spinner.STYLE_CLASS_SPLIT_ARROWS_HORIZONTAL);
+        zoomDeltaSampleFactorSpinner.setPrefWidth(80);
+        zoomDeltaSampleFactor.bind(zoomDeltaSampleFactorSpinner.valueProperty());
         rowIndex++;
 
         mainGridPane.add(withCrosshair(zoomGradientImageView), 0, rowIndex);

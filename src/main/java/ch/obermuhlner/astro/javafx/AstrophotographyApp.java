@@ -2,6 +2,7 @@ package ch.obermuhlner.astro.javafx;
 
 import ch.obermuhlner.astro.gradient.GradientRemover;
 import ch.obermuhlner.astro.gradient.Point;
+import ch.obermuhlner.astro.gradient.analysis.Histogram;
 import ch.obermuhlner.astro.gradient.correction.SampleSubtraction;
 import ch.obermuhlner.astro.gradient.correction.SimpleSampleSubtraction;
 import ch.obermuhlner.astro.image.ColorModel;
@@ -33,6 +34,8 @@ import javafx.event.EventHandler;
 import javafx.scene.Group;
 import javafx.scene.Node;
 import javafx.scene.Scene;
+import javafx.scene.canvas.Canvas;
+import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.Button;
 import javafx.scene.control.ComboBox;
 import javafx.scene.control.ContextMenu;
@@ -81,8 +84,12 @@ public class AstrophotographyApp extends Application {
   private static final int IMAGE_WIDTH = 600;
   private static final int IMAGE_HEIGHT = 600;
 
+
   private static final int ZOOM_WIDTH = 150;
   private static final int ZOOM_HEIGHT = 150;
+
+  private static final int HISTOGRAM_WIDTH = 200;
+  private static final int HISTOGRAM_HEIGHT = 50;
 
   private static final int SPACING = 2;
 
@@ -142,9 +149,9 @@ public class AstrophotographyApp extends Application {
   private DoubleImage zoomInputDoubleImage;
   private ImageView zoomInputImageView;
 
-  private WritableImage zoomPreviewImage;
-  private DoubleImage zoomPreviewDoubleImage;
-  private ImageView zoomPreviewImageView;
+  private WritableImage zoomOutputImage;
+  private DoubleImage zoomOutputDoubleImage;
+  private ImageView zoomOutputImageView;
 
   private WritableImage zoomGradientImage;
   private DoubleImage zoomGradientDoubleImage;
@@ -155,6 +162,15 @@ public class AstrophotographyApp extends Application {
   private ImageView zoomDeltaImageView;
 
   private final ObservableList<FixPoint> fixPoints = FXCollections.observableArrayList();
+
+  private final Histogram inputHistogram = new Histogram(ColorModel.RGB, HISTOGRAM_WIDTH);
+  private Canvas inputHistogramCanvas;
+
+  private final Histogram zoomInputHistogram = new Histogram(ColorModel.RGB, HISTOGRAM_WIDTH);
+  private Canvas zoomInputHistogramCanvas;
+
+  private final Histogram zoomOutputHistogram = new Histogram(ColorModel.RGB, HISTOGRAM_WIDTH);
+  private Canvas zoomOutputHistogramCanvas;
 
   @Override
   public void start(Stage primaryStage) {
@@ -422,6 +438,8 @@ public class AstrophotographyApp extends Application {
 
     fixPoints.clear();
     setZoom(width / 2, height / 2);
+
+    updateInputHistogram();
   }
 
   private List<Point> toPointList(ObservableList<FixPoint> fixPoints) {
@@ -535,6 +553,10 @@ public class AstrophotographyApp extends Application {
     int zoomOffsetX = zoomX - ZOOM_WIDTH/2;
     int zoomOffsetY = zoomY - ZOOM_HEIGHT/2;
 
+    if (inputDoubleImage == null) {
+      return;
+    }
+
     double[] rgb = new double[3];
     ColorUtil.toIntARGB(inputDoubleImage.getPixel(zoomX, zoomY, ColorModel.RGB, rgb));
     samplePixelColor.set(new Color(rgb[ColorModel.R], rgb[ColorModel.G], rgb[ColorModel.B], 1.0));
@@ -556,11 +578,61 @@ public class AstrophotographyApp extends Application {
     gradientRemover.removeGradient(
         zoomInputDoubleImage,
         zoomGradientDoubleImage,
-        zoomPreviewDoubleImage,
+        zoomOutputDoubleImage,
         zoomOffsetX,
         zoomOffsetY);
 
+    updateZoomHistogram();
+
     updateZoomDelta();
+  }
+
+  private void updateInputHistogram() {
+    inputHistogram.sampleImage(inputDoubleImage);
+    drawHistogram(inputHistogramCanvas, inputHistogram);
+  }
+
+  private void updateZoomHistogram() {
+    zoomInputHistogram.sampleImage(zoomInputDoubleImage);
+    drawHistogram(zoomInputHistogramCanvas, zoomInputHistogram);
+
+    zoomOutputHistogram.sampleImage(zoomOutputDoubleImage);
+    drawHistogram(zoomOutputHistogramCanvas, zoomOutputHistogram);
+  }
+
+  private static Color RED_SEMI = new Color(1.0, 0.0, 0.0, 0.8);
+  private static Color GREEN_SEMI = new Color(0.0, 1.0, 0.0, 0.8);
+  private static Color BLUE_SEMI = new Color(0.0, 0.0, 1.0, 0.8);
+  private void drawHistogram(Canvas histogramCanvas, Histogram histogram) {
+    GraphicsContext gc = histogramCanvas.getGraphicsContext2D();
+
+    double canvasWidth = histogramCanvas.getWidth();
+    double canvasHeight = histogramCanvas.getHeight();
+
+    gc.setFill(Color.WHITE);
+    gc.fillRect(0, 0, canvasWidth, canvasHeight);
+
+    gc.setLineWidth(2.0);
+
+    double prevR = histogram.getBin(ColorModel.R, 0) * canvasHeight;
+    double prevG = histogram.getBin(ColorModel.G, 0) * canvasHeight;
+    double prevB = histogram.getBin(ColorModel.B, 0) * canvasHeight;
+    for (int binIndex = 1; binIndex < histogram.getBinCount(); binIndex++) {
+      gc.setStroke(RED_SEMI);
+      double r = histogram.getBin(ColorModel.R, binIndex) * canvasHeight;
+      gc.strokeLine(binIndex - 1, canvasHeight - prevR, binIndex, canvasHeight - r);
+      prevR = r;
+
+      gc.setStroke(GREEN_SEMI);
+      double g = histogram.getBin(ColorModel.G, binIndex) * canvasHeight;
+      gc.strokeLine(binIndex - 1, canvasHeight - prevG, binIndex, canvasHeight - g);
+      prevG = g;
+
+      gc.setStroke(BLUE_SEMI);
+      double b = histogram.getBin(ColorModel.B, binIndex) * canvasHeight;
+      gc.strokeLine(binIndex - 1, canvasHeight - prevB, binIndex, canvasHeight - b);
+      prevB = b;
+    }
   }
 
   private void updateZoomDelta() {
@@ -616,9 +688,9 @@ public class AstrophotographyApp extends Application {
     }
     zoomInputImageView = new ImageView(zoomInputImage);
 
-    zoomPreviewImage = new WritableImage(ZOOM_WIDTH, ZOOM_HEIGHT);
-    zoomPreviewDoubleImage = new JavaFXWritableDoubleImage(zoomPreviewImage);
-    zoomPreviewImageView = new ImageView(zoomPreviewImage);
+    zoomOutputImage = new WritableImage(ZOOM_WIDTH, ZOOM_HEIGHT);
+    zoomOutputDoubleImage = new WriteThroughArrayDoubleImage(new JavaFXWritableDoubleImage(zoomOutputImage), ColorModel.RGB);
+    zoomOutputImageView = new ImageView(zoomOutputImage);
 
     zoomGradientImage = new WritableImage(ZOOM_WIDTH, ZOOM_HEIGHT);
     zoomGradientDoubleImage = new WriteThroughArrayDoubleImage(new JavaFXWritableDoubleImage(zoomGradientImage), ColorModel.RGB);
@@ -656,7 +728,7 @@ public class AstrophotographyApp extends Application {
         Spinner<Number> sampleRadiusSpinner = new Spinner<>(1, 30, 5);
         sampleHBox.getChildren().add(sampleRadiusSpinner);
         sampleRadiusSpinner.getStyleClass().add(Spinner.STYLE_CLASS_SPLIT_ARROWS_HORIZONTAL);
-        sampleRadiusSpinner.setPrefWidth(80);
+        sampleRadiusSpinner.setPrefWidth(70);
         sampleRadius.bind(sampleRadiusSpinner.valueProperty());
 
         sampleHBox.getChildren().add(new Label("Pixel:"));
@@ -781,6 +853,23 @@ public class AstrophotographyApp extends Application {
           Bindings.bindBidirectional(sampleSubtractionComboBox.valueProperty(), sampleSubtractionStrategy);
           algorithmRowIndex++;
         }
+
+        {
+          algorithmGridPane.add(new Label("Input:"), 0, algorithmRowIndex);
+          inputHistogramCanvas = new Canvas(HISTOGRAM_WIDTH, HISTOGRAM_HEIGHT);
+          algorithmGridPane.add(inputHistogramCanvas, 1, algorithmRowIndex);
+          algorithmRowIndex++;
+
+          algorithmGridPane.add(new Label("Zoom Input:"), 0, algorithmRowIndex);
+          zoomInputHistogramCanvas = new Canvas(HISTOGRAM_WIDTH, HISTOGRAM_HEIGHT);
+          algorithmGridPane.add(zoomInputHistogramCanvas, 1, algorithmRowIndex);
+          algorithmRowIndex++;
+
+          algorithmGridPane.add(new Label("Zoom Output:"), 0, algorithmRowIndex);
+          zoomOutputHistogramCanvas = new Canvas(HISTOGRAM_WIDTH, HISTOGRAM_HEIGHT);
+          algorithmGridPane.add(zoomOutputHistogramCanvas, 1, algorithmRowIndex);
+          algorithmRowIndex++;
+        }
       }
 
       {
@@ -788,7 +877,7 @@ public class AstrophotographyApp extends Application {
         mainGridPane.add(new Label("Output Preview:"), 1, rowIndex);
         rowIndex++;
         mainGridPane.add(withCrosshair(zoomInputImageView), 0, rowIndex);
-        mainGridPane.add(withCrosshair(zoomPreviewImageView), 1, rowIndex);
+        mainGridPane.add(withCrosshair(zoomOutputImageView), 1, rowIndex);
         rowIndex++;
       }
 
@@ -807,7 +896,7 @@ public class AstrophotographyApp extends Application {
         Spinner<Number> zoomDeltaSampleFactorSpinner = new Spinner<>(1.0, 50.0, 20.0);
         hbox.getChildren().add(zoomDeltaSampleFactorSpinner);
         zoomDeltaSampleFactorSpinner.getStyleClass().add(Spinner.STYLE_CLASS_SPLIT_ARROWS_HORIZONTAL);
-        zoomDeltaSampleFactorSpinner.setPrefWidth(80);
+        zoomDeltaSampleFactorSpinner.setPrefWidth(70);
         zoomDeltaSampleFactor.bind(zoomDeltaSampleFactorSpinner.valueProperty());
         rowIndex++;
 
@@ -819,7 +908,7 @@ public class AstrophotographyApp extends Application {
     }
 
     setupZoomDragEvents(zoomInputImageView);
-    setupZoomDragEvents(zoomPreviewImageView);
+    setupZoomDragEvents(zoomOutputImageView);
     setupZoomDragEvents(zoomGradientImageView);
     setupZoomDragEvents(zoomDeltaImageView);
 

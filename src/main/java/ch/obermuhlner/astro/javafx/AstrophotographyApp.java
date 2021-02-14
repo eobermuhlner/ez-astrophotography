@@ -91,6 +91,9 @@ public class AstrophotographyApp extends Application {
   private static final int HISTOGRAM_WIDTH = 200;
   private static final int HISTOGRAM_HEIGHT = 50;
 
+  private static final int COLOR_CURVE_WIDTH = 50;
+  private static final int COLOR_CURVE_HEIGHT = 50;
+
   private static final int SPACING = 2;
 
   private static final boolean ACCURATE_PREVIEW = true;
@@ -112,6 +115,7 @@ public class AstrophotographyApp extends Application {
   private final IntegerProperty sampleRadius = new SimpleIntegerProperty();
   private final ObjectProperty<Color> samplePixelColor = new SimpleObjectProperty<>();
   private final ObjectProperty<Color> sampleAverageColor = new SimpleObjectProperty<>();
+  private final ObjectProperty<Color> gradientPixelColor = new SimpleObjectProperty<>();
 
   private final ObjectProperty<PointFinderStrategy> pointFinderStrategy = new SimpleObjectProperty<>();
   private final DoubleProperty interpolationPower = new SimpleDoubleProperty();
@@ -163,13 +167,15 @@ public class AstrophotographyApp extends Application {
 
   private final ObservableList<FixPoint> fixPoints = FXCollections.observableArrayList();
 
-  private final Histogram inputHistogram = new Histogram(ColorModel.RGB, HISTOGRAM_WIDTH);
+  private Canvas colorCurveCanvas;
+
+  private final Histogram inputHistogram = new Histogram(ColorModel.RGB, HISTOGRAM_WIDTH - 1);
   private Canvas inputHistogramCanvas;
 
-  private final Histogram zoomInputHistogram = new Histogram(ColorModel.RGB, HISTOGRAM_WIDTH);
+  private final Histogram zoomInputHistogram = new Histogram(ColorModel.RGB, HISTOGRAM_WIDTH - 1);
   private Canvas zoomInputHistogramCanvas;
 
-  private final Histogram zoomOutputHistogram = new Histogram(ColorModel.RGB, HISTOGRAM_WIDTH);
+  private final Histogram zoomOutputHistogram = new Histogram(ColorModel.RGB, HISTOGRAM_WIDTH - 1);
   private Canvas zoomOutputHistogramCanvas;
 
   @Override
@@ -564,6 +570,9 @@ public class AstrophotographyApp extends Application {
     ImageUtil.averagePixel(inputDoubleImage, zoomX, zoomY, sampleRadius.get(), ColorModel.RGB, rgb);
     sampleAverageColor.set(new Color(rgb[ColorModel.R], rgb[ColorModel.G], rgb[ColorModel.B], 1.0));
 
+    zoomGradientDoubleImage.getPixel(ZOOM_WIDTH/2, ZOOM_HEIGHT/2, ColorModel.RGB, rgb);
+    gradientPixelColor.set(new Color(rgb[ColorModel.R], rgb[ColorModel.G], rgb[ColorModel.B], 1.0));
+
     ImageUtil.copyPixels(
         inputDoubleImage,
         zoomOffsetX,
@@ -582,9 +591,60 @@ public class AstrophotographyApp extends Application {
         zoomOffsetX,
         zoomOffsetY);
 
+    updateColorCurve();
     updateZoomHistogram();
-
     updateZoomDelta();
+  }
+
+  private void updateColorCurve() {
+    SampleSubtraction sampleSubtraction = sampleSubtractionStrategy.get().getSampleSubtraction();
+
+    drawColorCurve(colorCurveCanvas, sampleSubtractionStrategy.get().getSampleSubtraction(), gradientPixelColor.get());
+  }
+
+  private void drawColorCurve(Canvas canvas, SampleSubtraction sampleSubtraction, Color gradientColor) {
+    final GraphicsContext gc = canvas.getGraphicsContext2D();
+
+    final double canvasWidth = canvas.getWidth();
+    final double canvasHeight = canvas.getHeight();
+
+    final double inset = 2;
+    final double chartWidth = canvasWidth - inset * 2;
+    final double chartHeight = canvasHeight - inset * 2;
+
+    gc.setFill(Color.LIGHTGRAY);
+    gc.fillRect(0, 0, canvasWidth, canvasHeight);
+
+    gc.setLineWidth(2.0);
+
+    double xStep = 1.0 / canvasWidth * 0.5;
+
+    double lastCanvasX = 0.0;
+    double lastCanvasYR = 0.0;
+    double lastCanvasYG = 0.0;
+    double lastCanvasYB = 0.0;
+    for (double x = 0.0; x <= 1.0; x+=xStep) {
+      double yR = sampleSubtraction.subtract(x, gradientColor.getRed());
+      double yG = sampleSubtraction.subtract(x, gradientColor.getGreen());
+      double yB = sampleSubtraction.subtract(x, gradientColor.getBlue());
+
+      double canvasX = x * chartHeight + inset;
+      double canvasYR = canvasHeight - inset - yR * canvasHeight;
+      double canvasYG = canvasHeight - inset - yG * canvasHeight;
+      double canvasYB = canvasHeight - inset - yB * canvasHeight;
+      if (x != 0) {
+        gc.setStroke(RED_SEMI);
+        gc.strokeLine(lastCanvasX, lastCanvasYR, canvasX, canvasYR);
+        gc.setStroke(GREEN_SEMI);
+        gc.strokeLine(lastCanvasX, lastCanvasYG, canvasX, canvasYG);
+        gc.setStroke(BLUE_SEMI);
+        gc.strokeLine(lastCanvasX, lastCanvasYB, canvasX, canvasYB);
+      }
+      lastCanvasX = canvasX;
+      lastCanvasYR = canvasYR;
+      lastCanvasYG = canvasYG;
+      lastCanvasYB = canvasYB;
+    }
   }
 
   private void updateInputHistogram() {
@@ -609,7 +669,7 @@ public class AstrophotographyApp extends Application {
     double canvasWidth = histogramCanvas.getWidth();
     double canvasHeight = histogramCanvas.getHeight();
 
-    gc.setFill(Color.WHITE);
+    gc.setFill(Color.LIGHTGRAY);
     gc.fillRect(0, 0, canvasWidth, canvasHeight);
 
     gc.setLineWidth(2.0);
@@ -741,6 +801,11 @@ public class AstrophotographyApp extends Application {
         sampleHBox.getChildren().add(sampleAverageRectangle);
         sampleAverageRectangle.fillProperty().bind(sampleAverageColor);
 
+        sampleHBox.getChildren().add(new Label("Gradient:"));
+        Rectangle sampleGradientRectangle = new Rectangle(15, 15);
+        sampleHBox.getChildren().add(sampleGradientRectangle);
+        sampleGradientRectangle.fillProperty().bind(gradientPixelColor);
+
         rowIndex++;
       }
 
@@ -855,6 +920,11 @@ public class AstrophotographyApp extends Application {
         }
 
         {
+          algorithmGridPane.add(new Label("Curve:"), 0, algorithmRowIndex);
+          colorCurveCanvas = new Canvas(COLOR_CURVE_WIDTH, COLOR_CURVE_HEIGHT);
+          algorithmGridPane.add(colorCurveCanvas, 1, algorithmRowIndex);
+          algorithmRowIndex++;
+
           algorithmGridPane.add(new Label("Input:"), 0, algorithmRowIndex);
           inputHistogramCanvas = new Canvas(HISTOGRAM_WIDTH, HISTOGRAM_HEIGHT);
           algorithmGridPane.add(inputHistogramCanvas, 1, algorithmRowIndex);

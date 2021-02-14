@@ -2,6 +2,9 @@ package ch.obermuhlner.astro.gradient.math;
 
 import java.util.List;
 
+/**
+ * https://gist.github.com/lecho/7627739
+ */
 public class SplineInterpolator {
 
   private final List<Double> mX;

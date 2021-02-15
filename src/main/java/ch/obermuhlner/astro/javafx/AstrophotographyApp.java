@@ -70,13 +70,17 @@ import javafx.stage.Stage;
 import javafx.util.Callback;
 
 import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
 import java.io.IOException;
+import java.io.PrintWriter;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Properties;
 import java.util.function.Function;
 
 public class AstrophotographyApp extends Application {
@@ -100,6 +104,8 @@ public class AstrophotographyApp extends Application {
   private static final DecimalFormat INTEGER_FORMAT = new DecimalFormat("##0");
   private static final DecimalFormat DOUBLE_FORMAT = new DecimalFormat("##0.000");
   private static final DecimalFormat PERCENT_FORMAT = new DecimalFormat("##0.000%");
+
+  private static final String EZ_ASTRO_FILE_EXTENSION = ".ezastro";
 
   private final Path homeDirectory = homeDirectory();
 
@@ -165,6 +171,8 @@ public class AstrophotographyApp extends Application {
   private ImageView zoomDeltaImageView;
 
   private final ObservableList<FixPoint> fixPoints = FXCollections.observableArrayList();
+
+  private Spinner<Number> sampleRadiusSpinner;
 
   private Canvas colorCurveCanvas;
 
@@ -280,9 +288,15 @@ public class AstrophotographyApp extends Application {
 
   private void initializeValues() {
     pointFinderStrategy.set(PointFinderStrategy.All);
+    setSampleRadius(5);
     interpolationPower.set(3.0);
     removalFactor.set(1.0);
     sampleSubtractionStrategy.set(SampleSubtractionStrategy.Spline_1);
+  }
+
+  void setSampleRadius(int value) {
+    // workaround, because Spinner.valueProperty() is read only
+    sampleRadiusSpinner.getValueFactory().setValue(value);
   }
 
   private void updateFixPoints() {
@@ -353,14 +367,22 @@ public class AstrophotographyApp extends Application {
   private void openImageFile(Stage stage) {
     FileChooser fileChooser = new FileChooser();
     fileChooser.setInitialDirectory(homeDirectory.toFile());
-    fileChooser.setTitle("Open Image");
-    fileChooser.getExtensionFilters().add(new ExtensionFilter("Images", "*.tif", "*.tiff", "*.png", "*.jpg", "*.jpeg"));
-    inputFile = fileChooser.showOpenDialog(stage);
+    fileChooser.setTitle("Open Input Image or EZ-Astrophotography Project");
+    fileChooser.getExtensionFilters().add(new ExtensionFilter("Standard", "*" + EZ_ASTRO_FILE_EXTENSION, "*.tif", "*.tiff", "*.png", "*.jpg", "*.jpeg"));
+    fileChooser.getExtensionFilters().add(new ExtensionFilter("Project", "*" + EZ_ASTRO_FILE_EXTENSION));
+    fileChooser.getExtensionFilters().add(new ExtensionFilter("Image", "*.tif", "*.tiff", "*.png", "*.jpg", "*.jpeg"));
+    fileChooser.getExtensionFilters().add(new ExtensionFilter("All", "*"));
+    final File chosenFile = fileChooser.showOpenDialog(stage);
 
-    if (inputFile != null) {
+    if (chosenFile != null) {
       ProgressDialog.show("Loading", "Loading input image ...", () -> {
         try {
-          loadImage(inputFile);
+          if (chosenFile.getPath().endsWith(EZ_ASTRO_FILE_EXTENSION)) {
+            inputFile = loadProperties(chosenFile);
+          } else {
+            inputFile = chosenFile;
+            loadImage(inputFile);
+          }
         }
         catch (IOException e) {
           e.printStackTrace();
@@ -381,7 +403,10 @@ public class AstrophotographyApp extends Application {
     FileChooser fileChooser = new FileChooser();
     fileChooser.setInitialDirectory(directory);
     fileChooser.setTitle("Save Image");
-    fileChooser.getExtensionFilters().add(new ExtensionFilter("Images", "*.tif", "*.tiff", "*.png", "*.jpg", "*.jpeg"));
+    fileChooser.getExtensionFilters().add(new ExtensionFilter("Standard", "*" + EZ_ASTRO_FILE_EXTENSION, "*.tif", "*.tiff", "*.png", "*.jpg", "*.jpeg"));
+    fileChooser.getExtensionFilters().add(new ExtensionFilter("Project", "*" + EZ_ASTRO_FILE_EXTENSION));
+    fileChooser.getExtensionFilters().add(new ExtensionFilter("Image", "*.tif", "*.tiff", "*.png", "*.jpg", "*.jpeg"));
+    fileChooser.getExtensionFilters().add(new ExtensionFilter("All", "*"));
     File outputFile = fileChooser.showSaveDialog(stage);
 
     if (outputFile != null) {
@@ -403,6 +428,72 @@ public class AstrophotographyApp extends Application {
     gradientRemover.removeGradient(inputImage, null, outputImage);
 
     ImageWriter.write(outputImage, outputFile);
+
+    saveProperties(toPropertiesFile(outputFile));
+  }
+
+  private File toPropertiesFile(File outputFile) {
+    return new File(outputFile.getPath() + EZ_ASTRO_FILE_EXTENSION);
+  }
+
+  private void saveProperties(File file) throws IOException {
+    try(PrintWriter writer = new PrintWriter(new FileWriter(file))) {
+      Properties properties = new Properties();
+
+      properties.put("version", "0.0.1");
+      properties.put("input", String.valueOf(inputFile));
+      properties.put("glow.remover", "gradient");
+      for (int i = 0; i < fixPoints.size(); i++) {
+        properties.put("glow.remover.gradient.fixpoint." + i + ".x", String.valueOf(fixPoints.get(i).x));
+        properties.put("glow.remover.gradient.fixpoint." + i + ".y", String.valueOf(fixPoints.get(i).y));
+      }
+      properties.put("glow.remover.gradient.sampleRadius", String.valueOf(sampleRadius.get()));
+      properties.put("glow.remover.gradient.removalFactor", String.valueOf(removalFactor.get()));
+      properties.put("glow.remover.gradient.interpolationPower", String.valueOf(interpolationPower.get()));
+      properties.put("glow.remover.sampleSubtractionStrategy", sampleSubtractionStrategy.get().name());
+
+      properties.store(writer, "EZ-Astrophotography\nhttps://github.com/eobermuhlner/ez-astrophotography");
+    }
+  }
+
+  private File loadProperties(File file) throws IOException {
+    File result = null;
+
+    try (FileReader reader = new FileReader(file)) {
+      Properties properties = new Properties();
+      properties.load(reader);
+
+      String version = properties.getProperty("version");
+      if (!version.startsWith("0.")) {
+        throw new IOException("Incompatible EZ-Astrophotography version: " + version);
+      }
+
+      result = new File(properties.getProperty("input"));
+      loadImage(result);
+      sampleSubtractionStrategy.set(SampleSubtractionStrategy.valueOf(properties.getProperty("glow.remover.sampleSubtractionStrategy")));
+
+      if ("gradient".equals(properties.getProperty("glow.remover"))) {
+        setSampleRadius(Integer.parseInt(properties.getProperty("glow.remover.gradient.sampleRadius")));
+        removalFactor.set(Double.parseDouble(properties.getProperty("glow.remover.gradient.removalFactor")));
+        interpolationPower.set(Double.parseDouble(properties.getProperty("glow.remover.gradient.interpolationPower")));
+
+        fixPoints.clear();
+        boolean fixPointLoading = true;
+        int fixPointIndex = 0;
+        while (fixPointLoading) {
+          String x = properties.getProperty("glow.remover.gradient.fixpoint." + fixPointIndex + ".x");
+          String y = properties.getProperty("glow.remover.gradient.fixpoint." + fixPointIndex + ".y");
+          if (x != null && y != null) {
+            addFixPoint(Integer.parseInt(x), Integer.parseInt(y));
+          } else {
+            fixPointLoading = false;
+          }
+          fixPointIndex++;
+        }
+      }
+    }
+
+    return result;
   }
 
   private DoubleImage createOutputImage(DoubleImage inputImage) {
@@ -784,11 +875,15 @@ public class AstrophotographyApp extends Application {
         Bindings.bindBidirectional(zoomCenterYTextField.textProperty(), zoomCenterY, INTEGER_FORMAT);
 
         sampleHBox.getChildren().add(new Label("Radius:"));
-        Spinner<Number> sampleRadiusSpinner = new Spinner<>(1, 30, 5);
+        sampleRadiusSpinner = new Spinner<>(1, 30, 5);
         sampleHBox.getChildren().add(sampleRadiusSpinner);
         sampleRadiusSpinner.getStyleClass().add(Spinner.STYLE_CLASS_SPLIT_ARROWS_HORIZONTAL);
         sampleRadiusSpinner.setPrefWidth(70);
         sampleRadius.bind(sampleRadiusSpinner.valueProperty());
+//        TextField sampleRadiusTextField = new TextField();
+//        sampleHBox.getChildren().add(sampleRadiusTextField);
+//        sampleRadiusTextField.setPrefWidth(60);
+//        Bindings.bindBidirectional(sampleRadiusTextField.textProperty(), sampleRadius, INTEGER_FORMAT);
 
         sampleHBox.getChildren().add(new Label("Pixel:"));
         Rectangle samplePixelRectangle = new Rectangle(15, 15);
@@ -817,8 +912,7 @@ public class AstrophotographyApp extends Application {
         addFixPointButton.setOnAction(event -> {
           int x = zoomCenterX.get();
           int y = zoomCenterY.get();
-          double[] color = ImageUtil.averagePixel(inputDoubleImage, x, y, sampleRadius.get(), ColorModel.RGB, null);
-          fixPoints.add(new FixPoint(x, y, new Color(color[0], color[1], color[2], 1.0)));
+          addFixPoint(x, y);
         });
 
         Button clearFixPointButton = new Button("Clear");
@@ -982,6 +1076,11 @@ public class AstrophotographyApp extends Application {
     setupZoomDragEvents(zoomDeltaImageView);
 
     return mainBox;
+  }
+
+  private void addFixPoint(int x, int y) {
+    double[] color = ImageUtil.averagePixel(inputDoubleImage, x, y, sampleRadius.get(), ColorModel.RGB, null);
+    fixPoints.add(new FixPoint(x, y, new Color(color[0], color[1], color[2], 1.0)));
   }
 
   private Node withZoomRectangle(ImageView imageView, Pane zoomRectanglePane) {

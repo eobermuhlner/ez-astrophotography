@@ -9,6 +9,7 @@ public enum SampleSubtractionStrategy {
   Simple("Simple", new SimpleSampleSubtraction()),
   Linear("Linear", new LinearSampleSubtraction()),
   Spline_1("Spline 1%", new SplineSampleSubtraction(0.01)),
+  Spline_1_Stretch("Spline 1% + Stretch", new SplineSampleSubtraction(0.01, 0.7, 0.9)),
   Spline_10("Spline 10%", new SplineSampleSubtraction(0.1));
 
   private final String text;

@@ -84,15 +84,14 @@ public class AstrophotographyApp extends Application {
   private static final int IMAGE_WIDTH = 600;
   private static final int IMAGE_HEIGHT = 600;
 
-
   private static final int ZOOM_WIDTH = 150;
   private static final int ZOOM_HEIGHT = 150;
 
   private static final int HISTOGRAM_WIDTH = 200;
   private static final int HISTOGRAM_HEIGHT = 50;
 
-  private static final int COLOR_CURVE_WIDTH = 50;
-  private static final int COLOR_CURVE_HEIGHT = 50;
+  private static final int COLOR_CURVE_WIDTH = 200;
+  private static final int COLOR_CURVE_HEIGHT = 200;
 
   private static final int SPACING = 2;
 

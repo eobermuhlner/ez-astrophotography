@@ -44,12 +44,24 @@ public class GradientRemover {
     this.removalFactor = removalFactor;
   }
 
+  public double getRemovalFactor() {
+    return removalFactor;
+  }
+
   public void setInterpolationPower(double interpolationPower) {
     this.interpolationPower = interpolationPower;
   }
 
+  public double getInterpolationPower() {
+    return interpolationPower;
+  }
+
   public void setSampleSubtraction(SampleSubtraction sampleSubtraction) {
     this.sampleSubtraction = sampleSubtraction;
+  }
+
+  public SampleSubtraction getSampleSubtraction() {
+    return sampleSubtraction;
   }
 
   public void setFixPoints(List<Point> fixPoints, DoubleImage image, int sampleRadius) {

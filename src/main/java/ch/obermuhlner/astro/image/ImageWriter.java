@@ -3,6 +3,7 @@ package ch.obermuhlner.astro.image;
 import mil.nga.tiff.TiffWriter;
 
 import javax.imageio.ImageIO;
+import java.awt.image.*;
 import java.io.File;
 import java.io.IOException;
 
@@ -44,12 +45,18 @@ public class ImageWriter {
       image = imageCopy;
     }
 
-    if (image instanceof AwtBufferedDoubleImage) {
-      AwtBufferedDoubleImage bufferedDoubleImage = ((AwtBufferedDoubleImage) image);
-      ImageIO.write(bufferedDoubleImage.image, format.name(), output);
-      return;
+    if (!(image instanceof AwtBufferedDoubleImage)) {
+      DoubleImage temp = new AwtBufferedDoubleImage(new BufferedImage(
+          image.getWidth(),
+          image.getHeight(),
+          BufferedImage.TYPE_INT_RGB
+      ));
+      ImageUtil.copyPixels(image, 0, 0, temp, 0, 0, image.getWidth(), image.getHeight(), ColorModel.RGB);
+      image = temp;
     }
 
-    throw new IllegalArgumentException("Unknown image type: " + image.getClass());
+    AwtBufferedDoubleImage bufferedDoubleImage = ((AwtBufferedDoubleImage) image);
+    ImageIO.write(bufferedDoubleImage.image, format.name(), output);
+    return;
   }
 }

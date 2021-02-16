@@ -7,6 +7,10 @@ import ch.obermuhlner.astro.gradient.Point;
 import ch.obermuhlner.astro.gradient.correction.LinearSampleSubtraction;
 import ch.obermuhlner.astro.gradient.correction.SimpleSampleSubtraction;
 import ch.obermuhlner.astro.gradient.correction.SplineSampleSubtraction;
+import ch.obermuhlner.astro.gradient.filter.BoxBlurFilter;
+import ch.obermuhlner.astro.gradient.filter.Filter;
+import ch.obermuhlner.astro.gradient.filter.GaussianBlurFilter;
+import ch.obermuhlner.astro.image.ColorModel;
 import ch.obermuhlner.astro.image.DoubleImage;
 import ch.obermuhlner.astro.image.ImageCreator;
 import ch.obermuhlner.astro.image.ImageQuality;
@@ -19,12 +23,14 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 
 public class Astrophotography {
 
   public static void main(String[] args) throws IOException {
     GradientRemover gradientRemover = new GradientRemover();
+    List<Filter> filters = new ArrayList<>();
 
     String outputFilePrefix = "output_";
     List<File> inputFiles = new ArrayList<>();
@@ -79,6 +85,20 @@ public class Astrophotography {
         }
     );
     commandParser.add(
+        new Command("filter", 0,
+            new Option("box-blur", 1),
+            new Option("gaussian-blur", 1)
+        ),
+        (commandArguments, optionsWithArguments) -> {
+          optionsWithArguments.handleOption("box-blur", arguments -> {
+            filters.add(new BoxBlurFilter(Integer.parseInt(arguments.get(0)), ColorModel.RGB));
+          });
+          optionsWithArguments.handleOption("gaussian-blur", arguments -> {
+            filters.add(new GaussianBlurFilter(Integer.parseInt(arguments.get(0)), ColorModel.RGB));
+          });
+        }
+    );
+    commandParser.add(
         new Command("curve-subtract", 0),
         (commandArguments, optionsWithArguments) -> {
           gradientRemover.setSampleSubtraction(new SimpleSampleSubtraction());
@@ -115,11 +135,13 @@ public class Astrophotography {
     );
 
     commandParser.parse(new String[] {
-        "input", "images/Autosave001.tif",
-        "gradient", "--point", "100,100", "--point", "-100,-100",
+//        "input", "images/Autosave001.tif",
+        "input", "images/inputs/Autosave001_small_compress0.png",
+//        "gradient", "--point", "100,100", "--point", "-100,-100",
 //        "curve-linear",
-        "curve-spline", "--gradient-factor", "0.02", "--stretch", "0.6", "0.9",
-        "output", "images/Test.tif"
+//        "curve-spline", "--gradient-factor", "0.02", "--stretch", "0.6", "0.9",
+        "filter", "--gaussian-blur", "5",
+        "output", "images/Test.png"
 
     });
     //commandParser.parse(args);
@@ -133,16 +155,29 @@ public class Astrophotography {
         outputFile = new File(inputFile.getParent(), outputFilePrefix + inputFile.getName());
       }
 
-      System.out.println("Processing " + inputFile);
+      System.out.println("Load " + inputFile);
 
       DoubleImage inputImage = ImageReader.read(inputFile, ImageQuality.High);
       DoubleImage outputImage = ImageCreator.create(inputImage.getWidth(), inputImage.getHeight(), ImageQuality.High);
 
-      gradientRemover.setFixPoints(correctFixPoints(gradientPoints, inputImage), inputImage, sampleRadius.get());
+      if (!filters.isEmpty()) {
+        for (Filter filter : filters) {
+          System.out.println("Process filter " + filter);
+          filter.filter(inputImage, outputImage);
+        }
+      } else {
+        List<Point> correctFixPoints = correctFixPoints(gradientPoints, inputImage);
+        System.out.println("Set fix points " + correctFixPoints);
+        gradientRemover.setFixPoints(correctFixPoints, inputImage, sampleRadius.get());
 
-      gradientRemover.removeGradient(inputImage, null, outputImage);
+        System.out.println("Remove gradient");
+        gradientRemover.removeGradient(inputImage, null, outputImage);
+      }
 
+      System.out.println("Save " + outputFile);
       ImageWriter.write(outputImage, outputFile);
+
+      System.out.println("Finished " + inputFile + " -> " + outputFile);
     }
   }
 

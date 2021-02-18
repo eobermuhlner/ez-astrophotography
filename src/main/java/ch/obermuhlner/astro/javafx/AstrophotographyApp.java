@@ -291,7 +291,7 @@ public class AstrophotographyApp extends Application {
     setSampleRadius(5);
     interpolationPower.set(3.0);
     removalFactor.set(1.0);
-    sampleSubtractionStrategy.set(SampleSubtractionStrategy.Spline_1);
+    sampleSubtractionStrategy.set(SampleSubtractionStrategy.Linear);
   }
 
   void setSampleRadius(int value) {

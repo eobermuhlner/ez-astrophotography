@@ -97,8 +97,147 @@ public class GaussianBlurFilter implements Filter {
   public void boxBlur(DoubleImage source, int sourceX, int sourceY, DoubleImage target, int targetX, int targetY, int width, int height, int boxRadius) {
     ArrayDoubleImage tempImage = new ArrayDoubleImage(width, height, model);
 
-    boxBlurHorizontal(source, sourceX, sourceY, tempImage, 0, 0, width, height, boxRadius);
-    boxBlurVertical(tempImage, 0, 0, target, targetX, targetY, width, height, boxRadius);
+    //boxBlurHorizontal(source, sourceX, sourceY, tempImage, 0, 0, width, height, boxRadius);
+    //boxBlurVertical(tempImage, 0, 0, target, targetX, targetY, width, height, boxRadius);
+
+    linearBoxBlurHorizontal(source, tempImage, width, height, boxRadius);
+    linearBoxBlurVertical(tempImage, target, width, height, boxRadius);
+  }
+
+  private void linearBoxBlurHorizontal(DoubleImage source, DoubleImage target, int width, int height, int boxRadius) {
+    int kernelSize = boxRadius + boxRadius + 1;
+    double[] samples = new double[3];
+
+    for (int y = 0; y < height; y++) {
+      source.getPixel(0, y, model, samples);
+      double first0 = samples[0];
+      double first1 = samples[1];
+      double first2 = samples[2];
+
+      source.getPixel(width - 1, y, model, samples);
+      double last0 = samples[0];
+      double last1 = samples[1];
+      double last2 = samples[2];
+
+      int leftX = 0;
+      int rightX = boxRadius;
+      int targetX = 0;
+
+      double sum0 = first0 * (boxRadius+1);
+      double sum1 = first1 * (boxRadius+1);
+      double sum2 = first2 * (boxRadius+1);
+      for (int x = 0; x < boxRadius; x++) {
+        source.getPixel(x, y, model, samples);
+        sum0 += samples[0];
+        sum1 += samples[1];
+        sum2 += samples[2];
+      }
+      for (int x = 0; x <= boxRadius; x++) {
+        source.getPixel(rightX++, y, model, samples);
+        sum0 += samples[0] - first0;
+        sum1 += samples[1] - first1;
+        sum2 += samples[2] - first2;
+        samples[0] = sum0 / kernelSize;
+        samples[1] = sum1 / kernelSize;
+        samples[2] = sum2 / kernelSize;
+        target.setPixel(targetX++, y, model, samples);
+      }
+      for (int x = boxRadius + 1; x < width - boxRadius; x++) {
+        source.getPixel(rightX++, y, model, samples);
+        sum0 += samples[0];
+        sum1 += samples[1];
+        sum2 += samples[2];
+        source.getPixel(leftX++, y, model, samples);
+        sum0 -= samples[0];
+        sum1 -= samples[1];
+        sum2 -= samples[2];
+        samples[0] = sum0 / kernelSize;
+        samples[1] = sum1 / kernelSize;
+        samples[2] = sum2 / kernelSize;
+        target.setPixel(targetX++, y, model, samples);
+      }
+      for (int x = width - boxRadius; x < width; x++) {
+        sum0 += last0;
+        sum1 += last1;
+        sum2 += last2;
+        source.getPixel(leftX++, y, model, samples);
+        sum0 -= samples[0];
+        sum1 -= samples[1];
+        sum2 -= samples[2];
+        samples[0] = sum0 / kernelSize;
+        samples[1] = sum1 / kernelSize;
+        samples[2] = sum2 / kernelSize;
+        target.setPixel(targetX++, y, model, samples);
+      }
+    }
+  }
+
+  private void linearBoxBlurVertical(DoubleImage source, DoubleImage target, int width, int height, int boxRadius) {
+    int kernelSize = boxRadius + boxRadius + 1;
+    double[] samples = new double[3];
+
+    for (int x = 0; x < width; x++) {
+      source.getPixel(x, 0, model, samples);
+      double first0 = samples[0];
+      double first1 = samples[1];
+      double first2 = samples[2];
+
+      source.getPixel(x, height - 1, model, samples);
+      double last0 = samples[0];
+      double last1 = samples[1];
+      double last2 = samples[2];
+
+      int leftY = 0;
+      int rightY = boxRadius;
+      int targetY = 0;
+
+      double sum0 = first0 * (boxRadius+1);
+      double sum1 = first1 * (boxRadius+1);
+      double sum2 = first2 * (boxRadius+1);
+      for (int y = 0; y < boxRadius; y++) {
+        source.getPixel(x, y, model, samples);
+        sum0 += samples[0];
+        sum1 += samples[1];
+        sum2 += samples[2];
+      }
+      for (int y = 0; y <= boxRadius; y++) {
+        source.getPixel(x, rightY++, model, samples);
+        sum0 += samples[0] - first0;
+        sum1 += samples[1] - first1;
+        sum2 += samples[2] - first2;
+        samples[0] = sum0 / kernelSize;
+        samples[1] = sum1 / kernelSize;
+        samples[2] = sum2 / kernelSize;
+        target.setPixel(x, targetY++, model, samples);
+      }
+      for (int y = boxRadius + 1; y < height - boxRadius; y++) {
+        source.getPixel(x, rightY++, model, samples);
+        sum0 += samples[0];
+        sum1 += samples[1];
+        sum2 += samples[2];
+        source.getPixel(x, leftY++, model, samples);
+        sum0 -= samples[0];
+        sum1 -= samples[1];
+        sum2 -= samples[2];
+        samples[0] = sum0 / kernelSize;
+        samples[1] = sum1 / kernelSize;
+        samples[2] = sum2 / kernelSize;
+        target.setPixel(x, targetY++, model, samples);
+      }
+      for (int y = height - boxRadius; y < height; y++) {
+        sum0 += last0;
+        sum1 += last1;
+        sum2 += last2;
+        source.getPixel(x, leftY++, model, samples);
+        sum0 -= samples[0];
+        sum1 -= samples[1];
+        sum2 -= samples[2];
+        samples[0] = sum0 / kernelSize;
+        samples[1] = sum1 / kernelSize;
+        samples[2] = sum2 / kernelSize;
+        target.setPixel(x, targetY++, model, samples);
+      }
+    }
   }
 
   private void boxBlurHorizontal(DoubleImage source, int sourceX, int sourceY, DoubleImage target, int targetX, int targetY, int width, int height, int boxRadius) {

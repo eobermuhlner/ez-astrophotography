@@ -15,15 +15,16 @@ import ch.obermuhlner.astro.image.DoubleImage;
 import ch.obermuhlner.astro.image.ImageCreator;
 import ch.obermuhlner.astro.image.ImageQuality;
 import ch.obermuhlner.astro.image.ImageReader;
+import ch.obermuhlner.astro.image.ImageUtil;
 import ch.obermuhlner.astro.image.ImageWriter;
 
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 
 public class Astrophotography {
@@ -135,12 +136,13 @@ public class Astrophotography {
     );
 
     commandParser.parse(new String[] {
-//        "input", "images/Autosave001.tif",
-        "input", "images/inputs/Autosave001_small_compress0.png",
+        "input", "images/Autosave001.tif",
+//        "input", "images/inputs/Autosave001_small_compress0.png",
 //        "gradient", "--point", "100,100", "--point", "-100,-100",
+        "gradient",
 //        "curve-linear",
 //        "curve-spline", "--gradient-factor", "0.02", "--stretch", "0.6", "0.9",
-        "filter", "--gaussian-blur", "5",
+//        "filter", "--gaussian-blur", "50",
         "output", "images/Test.png"
 
     });
@@ -166,9 +168,13 @@ public class Astrophotography {
           filter.filter(inputImage, outputImage);
         }
       } else {
-        List<Point> correctFixPoints = correctFixPoints(gradientPoints, inputImage);
-        System.out.println("Set fix points " + correctFixPoints);
-        gradientRemover.setFixPoints(correctFixPoints, inputImage, sampleRadius.get());
+        if (gradientPoints.isEmpty()) {
+          autoSetFixPoints(gradientRemover, inputImage);
+        } else {
+          List<Point> correctFixPoints = correctFixPoints(gradientPoints, inputImage);
+          System.out.println("Set fix points " + correctFixPoints);
+          gradientRemover.setFixPoints(correctFixPoints, inputImage, sampleRadius.get());
+        }
 
         System.out.println("Remove gradient");
         gradientRemover.removeGradient(inputImage, null, outputImage);
@@ -179,6 +185,46 @@ public class Astrophotography {
 
       System.out.println("Finished " + inputFile + " -> " + outputFile);
     }
+  }
+
+  private static void autoSetFixPoints(GradientRemover gradientRemover, DoubleImage image) {
+    int sampleWidth = image.getWidth() / 5;
+    int sampleHeight = image.getHeight() / 5;
+    int sampleRadius = Math.min(sampleWidth, sampleHeight) / 2;
+
+    int x1 = image.getWidth() / 2;
+    int y1 = sampleHeight / 2;
+    double[] color1 = ImageUtil.averagePixel(
+        image,
+        x1,
+        y1,
+        sampleRadius,
+        ColorModel.RGB,
+        null);
+
+    int x2 = sampleWidth / 2;
+    int y2 = image.getHeight() - sampleHeight / 2;
+    double[] color2 = ImageUtil.averagePixel(
+        image,
+        x2,
+        y2,
+        sampleRadius,
+        ColorModel.RGB,
+        null);
+
+    int x3 = image.getWidth() - sampleWidth / 2;
+    int y3 = image.getHeight() - sampleHeight / 2;
+    double[] color3 = ImageUtil.averagePixel(
+        image,
+        x3,
+        y3,
+        sampleRadius,
+        ColorModel.RGB,
+        null);
+
+    gradientRemover.setFixPoints(
+        Arrays.asList(new Point(x1, y1), new Point(x2, y2), new Point(x3, y3)),
+        Arrays.asList(color1, color2, color3));
   }
 
   private static String[] loadScript(File file) {

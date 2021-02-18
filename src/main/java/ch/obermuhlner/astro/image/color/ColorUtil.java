@@ -151,7 +151,7 @@ public class ColorUtil {
     return delta;
   }
 
-  public static double[] convert(double[] source, ColorModel sourceModel, ColorModel targetModel, double[] target) {
+  public static double[] convert(double[] source, ColorModel sourceModel, double[] target, ColorModel targetModel) {
     if (target == null) {
       target = new double[3];
     }

@@ -139,10 +139,10 @@ public class Astrophotography {
         "input", "images/Autosave001.tif",
 //        "input", "images/inputs/Autosave001_small_compress0.png",
 //        "gradient", "--point", "100,100", "--point", "-100,-100",
-//        "gradient",
+        "gradient",
 //        "curve-linear",
 //        "curve-spline", "--gradient-factor", "0.02", "--stretch", "0.6", "0.9",
-        "filter", "--gaussian-blur", "3",
+//        "filter", "--gaussian-blur", "3",
         "output", "images/Test.png"
 
     });
@@ -190,37 +190,21 @@ public class Astrophotography {
   private static void autoSetFixPoints(GradientRemover gradientRemover, DoubleImage image) {
     int sampleWidth = image.getWidth() / 5;
     int sampleHeight = image.getHeight() / 5;
-    int sampleRadius = Math.min(sampleWidth, sampleHeight) / 2;
 
     int x1 = image.getWidth() / 2;
     int y1 = sampleHeight / 2;
-    double[] color1 = ImageUtil.averagePixel(
-        image,
-        x1,
-        y1,
-        sampleRadius,
-        ColorModel.RGB,
-        null);
+    double[] color1 = image.medianPixel(x1, y1, sampleWidth, sampleHeight, ColorModel.RGB, null);
+    System.out.println("Auto median pixel1: " + Arrays.toString(color1));
 
     int x2 = sampleWidth / 2;
     int y2 = image.getHeight() - sampleHeight / 2;
-    double[] color2 = ImageUtil.averagePixel(
-        image,
-        x2,
-        y2,
-        sampleRadius,
-        ColorModel.RGB,
-        null);
+    double[] color2 = image.medianPixel(x2, y2, sampleWidth, sampleHeight, ColorModel.RGB, null);
+    System.out.println("Auto median pixel1: " + Arrays.toString(color2));
 
     int x3 = image.getWidth() - sampleWidth / 2;
     int y3 = image.getHeight() - sampleHeight / 2;
-    double[] color3 = ImageUtil.averagePixel(
-        image,
-        x3,
-        y3,
-        sampleRadius,
-        ColorModel.RGB,
-        null);
+    double[] color3 = image.medianPixel(x3, y3, sampleWidth, sampleHeight, ColorModel.RGB, null);
+    System.out.println("Auto median pixel1: " + Arrays.toString(color3));
 
     gradientRemover.setFixPoints(
         Arrays.asList(new Point(x1, y1), new Point(x2, y2), new Point(x3, y3)),

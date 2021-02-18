@@ -30,7 +30,7 @@ public class TiffDoubleImage implements DoubleImage {
   }
 
   @Override
-  public double[] getPixel(int x, int y, ColorModel model, double[] samples) {
+  public double[] getNativePixel(int x, int y, double[] samples) {
     if (samples == null) {
       samples = new double[3];
     }
@@ -50,23 +50,12 @@ public class TiffDoubleImage implements DoubleImage {
       samples[ColorModel.RGB.B] = pixel[2].doubleValue() / 256.0;
     }
 
-    if (model == ColorModel.HSV) {
-      ColorUtil.convertRGBtoHSV(samples, samples);
-    }
-
     return samples;
   }
 
   @Override
-  public void setPixel(int x, int y, ColorModel model, double[] samples) {
-    double[] rgbSamples;
-    if (model == ColorModel.HSV) {
-      rgbSamples = ColorUtil.convertHSVtoRGB(samples, null);
-    } else {
-      rgbSamples = samples;
-    }
-
-    image.setPixel(x, y, new Float[] { (float) rgbSamples[ColorModel.RGB.R], (float) rgbSamples[ColorModel.RGB.G], (float) rgbSamples[ColorModel.RGB.B] });
+  public void setNativePixel(int x, int y, double[] samples) {
+    image.setPixel(x, y, new Float[] { (float) samples[ColorModel.RGB.R], (float) samples[ColorModel.RGB.G], (float) samples[ColorModel.RGB.B] });
   }
 
 }

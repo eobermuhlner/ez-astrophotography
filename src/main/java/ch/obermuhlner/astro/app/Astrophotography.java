@@ -139,10 +139,10 @@ public class Astrophotography {
         "input", "images/Autosave001.tif",
 //        "input", "images/inputs/Autosave001_small_compress0.png",
 //        "gradient", "--point", "100,100", "--point", "-100,-100",
-        "gradient",
+//        "gradient",
 //        "curve-linear",
 //        "curve-spline", "--gradient-factor", "0.02", "--stretch", "0.6", "0.9",
-//        "filter", "--gaussian-blur", "50",
+        "filter", "--gaussian-blur", "3",
         "output", "images/Test.png"
 
     });

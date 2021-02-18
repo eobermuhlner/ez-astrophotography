@@ -2,7 +2,6 @@ package ch.obermuhlner.astro.gradient.analysis;
 
 import ch.obermuhlner.astro.image.color.ColorModel;
 import ch.obermuhlner.astro.image.DoubleImage;
-import ch.obermuhlner.astro.image.ImageUtil;
 
 public class Histogram {
 
@@ -66,7 +65,7 @@ public class Histogram {
 
     for (int iy = 0; iy < height; iy++) {
       for (int ix = 0; ix < width; ix++) {
-        if (ImageUtil.isInsideImage(image, x + ix, y + iy)) {
+        if (image.isInside(x + ix, y + iy)) {
           image.getPixel(x + ix, y + iy, colorModel, pixel);
           addSample(pixel, 0);
           addSample(pixel, 1);

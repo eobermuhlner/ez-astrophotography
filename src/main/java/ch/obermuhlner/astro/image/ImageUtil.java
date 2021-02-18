@@ -14,22 +14,16 @@ public class ImageUtil {
     double[] samples = new double[3];
     for (int dy = 0; dy < height; dy++) {
       for (int dx = 0; dx < width; dx++) {
-        if (isInsideImage(source, sourceX + dx, sourceY + dy)) {
+        if (source.isInside(sourceX + dx, sourceY + dy)) {
           source.getPixel(sourceX + dx, sourceY + dy, model, samples);
         } else {
           samples[0] = 0;
           samples[1] = 0;
           samples[2] = 0;
         }
-        if (isInsideImage(target, targetX + dx, targetY + dy)) {
-          target.setPixel(targetX + dx, targetY + dy, model, samples);
-        }
+        target.setPixel(targetX + dx, targetY + dy, model, samples);
       }
     }
-  }
-
-  public static boolean isInsideImage(DoubleImage image, int x, int y) {
-    return x >= 0 && y >= 0 && x < image.getWidth() && y < image.getHeight();
   }
 
   public static double[] averagePixel(DoubleImage image, int x, int y, int sampleRadius, ColorModel colorModel, double[] color) {
@@ -43,7 +37,7 @@ public class ImageUtil {
     double sample2 = 0;
     for (int sy = y-sampleRadius; sy <= y+sampleRadius; sy++) {
       for (int sx = x-sampleRadius; sx < x+sampleRadius; sx++) {
-        if (ImageUtil.isInsideImage(image, sx, sy)) {
+        if (image.isInside(sx, sy)) {
           image.getPixel(sx, sy, colorModel, color);
           sample0 += color[0];
           sample1 += color[1];

@@ -29,18 +29,17 @@ public class SubDoubleImage implements DoubleImage {
   }
 
   @Override
-  public double[] getPixel(int x, int y, ColorModel model, double[] samples) {
-    int xx = Math.max(0, Math.min(width - 1, x + offsetX));
-    int yy = Math.max(0, Math.min(height - 1, y + offsetY));
-    return image.getPixel(xx, yy, model, samples);
+  public ColorModel getColorModel() {
+    return image.getColorModel();
   }
 
   @Override
-  public void setPixel(int x, int y, ColorModel model, double[] samples) {
-    int xx = x + offsetX;
-    int yy = y + offsetY;
-    if (xx >= 0 && xx < image.getWidth() && yy >= 0 && yy < image.getHeight()) {
-      image.setPixel(xx, yy, model, samples);
-    }
+  public double[] getNativePixel(int x, int y, double[] samples) {
+    return image.getNativePixel(x + offsetX, y + offsetX, samples);
+  }
+
+  @Override
+  public void setNativePixel(int x, int y, double[] samples) {
+    image.setNativePixel(x + offsetX, y + offsetX, samples);
   }
 }

@@ -23,8 +23,7 @@ public class AwtBufferedDoubleImage implements DoubleImage {
     return image.getHeight();
   }
 
-  @Override
-  public double[] getPixel(int x, int y, ch.obermuhlner.astro.image.color.ColorModel model, double[] samples) {
+  public double[] getNativePixel(int x, int y, double[] samples) {
     if (samples == null) {
       samples = new double[3];
     }
@@ -35,22 +34,11 @@ public class AwtBufferedDoubleImage implements DoubleImage {
     samples[ch.obermuhlner.astro.image.color.ColorModel.RGB.G] = ((rgb >> 8) & 0xff) / 255.0;
     samples[ch.obermuhlner.astro.image.color.ColorModel.RGB.B] = (rgb & 0xff) / 255.0;
 
-    if (model == ch.obermuhlner.astro.image.color.ColorModel.HSV) {
-        ColorUtil.convertRGBtoHSV(samples, samples);
-    }
-
     return samples;
   }
 
   @Override
-  public void setPixel(int x, int y, ch.obermuhlner.astro.image.color.ColorModel model, double[] samples) {
-    double[] rgbSamples;
-    if (model == ColorModel.HSV) {
-      rgbSamples = ColorUtil.convertHSVtoRGB(samples, null);
-    } else {
-      rgbSamples = samples;
-    }
-
-    image.setRGB(x, y, ColorUtil.toIntRGB(rgbSamples));
+  public void setNativePixel(int x, int y, double[] samples) {
+    image.setRGB(x, y, ColorUtil.toIntRGB(samples));
   }
 }

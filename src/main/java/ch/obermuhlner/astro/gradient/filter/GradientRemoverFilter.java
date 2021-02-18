@@ -12,8 +12,8 @@ public class GradientRemoverFilter implements Filter {
   }
 
   @Override
-  public void filter(DoubleImage source, int sourceX, int sourceY, DoubleImage target, int targetX, int targetY, int width, int height) {
+  public void filter(DoubleImage source, DoubleImage target, int width, int height) {
     // TODO make API compatible
-    gradientRemover.removeGradient(source, null, target, sourceX, sourceY);
+    gradientRemover.removeGradient(source, null, target);
   }
 }

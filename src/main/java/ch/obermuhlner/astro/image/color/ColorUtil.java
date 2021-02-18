@@ -150,4 +150,22 @@ public class ColorUtil {
 
     return delta;
   }
+
+  public static double[] convert(double[] source, ColorModel sourceModel, ColorModel targetModel, double[] target) {
+    if (target == null) {
+      target = new double[3];
+    }
+
+    if (sourceModel == ColorModel.RGB) {
+      if (targetModel == ColorModel.HSV) {
+        convertRGBtoHSV(source, target);
+      }
+    } else if (sourceModel == ColorModel.HSV) {
+      if (targetModel == ColorModel.RGB) {
+        convertHSVtoRGB(source, target);
+      }
+    }
+
+    return target;
+  }
 }

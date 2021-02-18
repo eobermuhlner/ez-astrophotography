@@ -24,7 +24,7 @@ public class JavaFXWritableDoubleImage implements DoubleImage {
   }
 
   @Override
-  public double[] getPixel(int x, int y, ColorModel model, double[] samples) {
+  public double[] getNativePixel(int x, int y, double[] samples) {
     if (samples == null) {
       samples = new double[3];
     }
@@ -35,23 +35,12 @@ public class JavaFXWritableDoubleImage implements DoubleImage {
     samples[ColorModel.RGB.G] = ((rgb >> 8) & 0xff) / 255.0;
     samples[ColorModel.RGB.B] = (rgb & 0xff) / 255.0;
 
-    if (model == ColorModel.HSV) {
-      ColorUtil.convertRGBtoHSV(samples, samples);
-    }
-
     return samples;
   }
 
   @Override
-  public void setPixel(int x, int y, ColorModel model, double[] samples) {
-    double[] rgbSamples;
-    if (model == ColorModel.HSV) {
-      rgbSamples = ColorUtil.convertHSVtoRGB(samples, null);
-    } else {
-      rgbSamples = samples;
-    }
-
-    image.getPixelWriter().setArgb(x, y, ColorUtil.toIntARGB(rgbSamples));
+  public void setNativePixel(int x, int y, double[] samples) {
+    image.getPixelWriter().setArgb(x, y, ColorUtil.toIntARGB(samples));
   }
 
 }

@@ -31,9 +31,9 @@ public class AwtBufferedDoubleImage implements DoubleImage {
 
     int rgb = image.getRGB(x, y);
 
-    samples[ch.obermuhlner.astro.image.color.ColorModel.R] = ((rgb >> 16) & 0xff) / 255.0;
-    samples[ch.obermuhlner.astro.image.color.ColorModel.G] = ((rgb >> 8) & 0xff) / 255.0;
-    samples[ch.obermuhlner.astro.image.color.ColorModel.B] = (rgb & 0xff) / 255.0;
+    samples[ch.obermuhlner.astro.image.color.ColorModel.RGB.R] = ((rgb >> 16) & 0xff) / 255.0;
+    samples[ch.obermuhlner.astro.image.color.ColorModel.RGB.G] = ((rgb >> 8) & 0xff) / 255.0;
+    samples[ch.obermuhlner.astro.image.color.ColorModel.RGB.B] = (rgb & 0xff) / 255.0;
 
     if (model == ch.obermuhlner.astro.image.color.ColorModel.HSV) {
         ColorUtil.convertRGBtoHSV(samples, samples);

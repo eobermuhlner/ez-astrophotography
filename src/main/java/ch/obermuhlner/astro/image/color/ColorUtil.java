@@ -3,9 +3,9 @@ package ch.obermuhlner.astro.image.color;
 public class ColorUtil {
 
   public static int toIntRGB(double[] rgb) {
-    int rr = Math.max(Math.min((int) (rgb[ColorModel.R] * 256), 255), 0);
-    int gg = Math.max(Math.min((int) (rgb[ColorModel.G] * 256), 255), 0);
-    int bb = Math.max(Math.min((int) (rgb[ColorModel.B] * 256), 255), 0);
+    int rr = Math.max(Math.min((int) (rgb[ColorModel.RGB.R] * 256), 255), 0);
+    int gg = Math.max(Math.min((int) (rgb[ColorModel.RGB.G] * 256), 255), 0);
+    int bb = Math.max(Math.min((int) (rgb[ColorModel.RGB.B] * 256), 255), 0);
 
     return (rr * 0x100 + gg) * 0x100 + bb;
   }
@@ -19,7 +19,7 @@ public class ColorUtil {
   }
 
   public static double[] convertRGBtoHSV(double[] rgb, double[] hsv, int rgbOffset, int hsvOffset) {
-    return convertRGBtoHSV(rgb[rgbOffset + ColorModel.R], rgb[rgbOffset + ColorModel.G], rgb[rgbOffset + ColorModel.B], hsv, hsvOffset);
+    return convertRGBtoHSV(rgb[rgbOffset + ColorModel.RGB.R], rgb[rgbOffset + ColorModel.RGB.G], rgb[rgbOffset + ColorModel.RGB.B], hsv, hsvOffset);
   }
 
   public static double[] convertRGBtoHSV(double r, double g, double b, double[] hsv) {
@@ -59,9 +59,9 @@ public class ColorUtil {
     if (hsv == null) {
       hsv = new double[3];
     }
-    hsv[hsvOffset + ColorModel.H] = h * 360;
-    hsv[hsvOffset + ColorModel.S] = s;
-    hsv[hsvOffset + ColorModel.V] = v;
+    hsv[hsvOffset + ColorModel.HSV.H] = h * 360;
+    hsv[hsvOffset + ColorModel.HSV.S] = s;
+    hsv[hsvOffset + ColorModel.HSV.V] = v;
     return hsv;
   }
 
@@ -70,7 +70,7 @@ public class ColorUtil {
   }
 
   public static double[] convertHSVtoRGB(double[] hsv, double[] rgb, int hsvOffset, int rgbOffset) {
-    return convertHSVtoRGB(hsv[hsvOffset + ColorModel.H], hsv[hsvOffset + ColorModel.S], hsv[hsvOffset + ColorModel.V], rgb, rgbOffset);
+    return convertHSVtoRGB(hsv[hsvOffset + ColorModel.HSV.H], hsv[hsvOffset + ColorModel.HSV.S], hsv[hsvOffset + ColorModel.HSV.V], rgb, rgbOffset);
   }
 
   public static double[] convertHSVtoRGB(double h, double s, double v, double[] rgb) {
@@ -127,16 +127,16 @@ public class ColorUtil {
     if (rgb == null) {
       rgb = new double[3];
     }
-    rgb[rgbOffset + ColorModel.R] = r;
-    rgb[rgbOffset + ColorModel.G] = g;
-    rgb[rgbOffset + ColorModel.B] = b;
+    rgb[rgbOffset + ColorModel.RGB.R] = r;
+    rgb[rgbOffset + ColorModel.RGB.G] = g;
+    rgb[rgbOffset + ColorModel.RGB.B] = b;
     return rgb;
   }
 
   public static double sampleDistance(double[] deltaSample, ColorModel colorModel, int sampleIndex, boolean normalize) {
     double delta = deltaSample[sampleIndex];
 
-    if (colorModel == ColorModel.HSV && sampleIndex == ColorModel.H) {
+    if (colorModel == ColorModel.HSV && sampleIndex == ColorModel.HSV.H) {
       if (delta > 180) {
         delta -= 180;
       } else if (delta < -180) {

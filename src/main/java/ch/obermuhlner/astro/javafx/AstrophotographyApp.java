@@ -655,13 +655,13 @@ public class AstrophotographyApp extends Application {
 
     double[] rgb = new double[3];
     ColorUtil.toIntARGB(inputDoubleImage.getPixel(zoomX, zoomY, ColorModel.RGB, rgb));
-    samplePixelColor.set(new Color(rgb[ColorModel.R], rgb[ColorModel.G], rgb[ColorModel.B], 1.0));
+    samplePixelColor.set(new Color(rgb[ColorModel.RGB.R], rgb[ColorModel.RGB.G], rgb[ColorModel.RGB.B], 1.0));
 
     ImageUtil.averagePixel(inputDoubleImage, zoomX, zoomY, sampleRadius.get(), ColorModel.RGB, rgb);
-    sampleAverageColor.set(new Color(rgb[ColorModel.R], rgb[ColorModel.G], rgb[ColorModel.B], 1.0));
+    sampleAverageColor.set(new Color(rgb[ColorModel.RGB.R], rgb[ColorModel.RGB.G], rgb[ColorModel.RGB.B], 1.0));
 
     zoomGradientDoubleImage.getPixel(ZOOM_WIDTH/2, ZOOM_HEIGHT/2, ColorModel.RGB, rgb);
-    gradientPixelColor.set(new Color(rgb[ColorModel.R], rgb[ColorModel.G], rgb[ColorModel.B], 1.0));
+    gradientPixelColor.set(new Color(rgb[ColorModel.RGB.R], rgb[ColorModel.RGB.G], rgb[ColorModel.RGB.B], 1.0));
 
     ImageUtil.copyPixels(
         inputDoubleImage,
@@ -764,22 +764,22 @@ public class AstrophotographyApp extends Application {
 
     gc.setLineWidth(2.0);
 
-    double prevR = histogram.getBin(ColorModel.R, 0) * canvasHeight;
-    double prevG = histogram.getBin(ColorModel.G, 0) * canvasHeight;
-    double prevB = histogram.getBin(ColorModel.B, 0) * canvasHeight;
+    double prevR = histogram.getBin(ColorModel.RGB.R, 0) * canvasHeight;
+    double prevG = histogram.getBin(ColorModel.RGB.G, 0) * canvasHeight;
+    double prevB = histogram.getBin(ColorModel.RGB.B, 0) * canvasHeight;
     for (int binIndex = 1; binIndex < histogram.getBinCount(); binIndex++) {
       gc.setStroke(RED_SEMI);
-      double r = histogram.getBin(ColorModel.R, binIndex) * canvasHeight;
+      double r = histogram.getBin(ColorModel.RGB.R, binIndex) * canvasHeight;
       gc.strokeLine(binIndex - 1, canvasHeight - prevR, binIndex, canvasHeight - r);
       prevR = r;
 
       gc.setStroke(GREEN_SEMI);
-      double g = histogram.getBin(ColorModel.G, binIndex) * canvasHeight;
+      double g = histogram.getBin(ColorModel.RGB.G, binIndex) * canvasHeight;
       gc.strokeLine(binIndex - 1, canvasHeight - prevG, binIndex, canvasHeight - g);
       prevG = g;
 
       gc.setStroke(BLUE_SEMI);
-      double b = histogram.getBin(ColorModel.B, binIndex) * canvasHeight;
+      double b = histogram.getBin(ColorModel.RGB.B, binIndex) * canvasHeight;
       gc.strokeLine(binIndex - 1, canvasHeight - prevB, binIndex, canvasHeight - b);
       prevB = b;
     }
@@ -813,13 +813,13 @@ public class AstrophotographyApp extends Application {
         double delta = ColorUtil.sampleDistance(output, colorModel, sampleIndex, true);
 
         if (delta < 0) {
-          rgb[ColorModel.R] = Math.min(1, -delta * sampleFactor);
-          rgb[ColorModel.G] = Math.min(1, -delta * sampleFactor * 0.5);
-          rgb[ColorModel.B] = Math.min(1, -delta * sampleFactor * 0.5);
+          rgb[ColorModel.RGB.R] = Math.min(1, -delta * sampleFactor);
+          rgb[ColorModel.RGB.G] = Math.min(1, -delta * sampleFactor * 0.5);
+          rgb[ColorModel.RGB.B] = Math.min(1, -delta * sampleFactor * 0.5);
         } else if (delta >= 0) {
-          rgb[ColorModel.R] = Math.min(1, delta * sampleFactor * 0.5);
-          rgb[ColorModel.G] = Math.min(1, delta * sampleFactor * 0.5);
-          rgb[ColorModel.B] = Math.min(1, delta * sampleFactor);
+          rgb[ColorModel.RGB.R] = Math.min(1, delta * sampleFactor * 0.5);
+          rgb[ColorModel.RGB.G] = Math.min(1, delta * sampleFactor * 0.5);
+          rgb[ColorModel.RGB.B] = Math.min(1, delta * sampleFactor);
         }
 
         deltaImage.setPixel(x, y, ColorModel.RGB, rgb);

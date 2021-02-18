@@ -135,23 +135,23 @@ public class GradientRemover {
           totalFactor = 1;
         }
 
-        gradientColor[ColorModel.R] = 0;
-        gradientColor[ColorModel.G] = 0;
-        gradientColor[ColorModel.B] = 0;
+        gradientColor[ColorModel.RGB.R] = 0;
+        gradientColor[ColorModel.RGB.G] = 0;
+        gradientColor[ColorModel.RGB.B] = 0;
         for (int i = 0; i < n; i++) {
           double factor = factors[i] / totalFactor;
           double[] fixColor = relevantFixColors.get(i);
-          gradientColor[ColorModel.R] += fixColor[ColorModel.R] * factor;
-          gradientColor[ColorModel.G] += fixColor[ColorModel.G] * factor;
-          gradientColor[ColorModel.B] += fixColor[ColorModel.B] * factor;
+          gradientColor[ColorModel.RGB.R] += fixColor[ColorModel.RGB.R] * factor;
+          gradientColor[ColorModel.RGB.G] += fixColor[ColorModel.RGB.G] * factor;
+          gradientColor[ColorModel.RGB.B] += fixColor[ColorModel.RGB.B] * factor;
         }
 
         input.getPixel(x, y, ColorModel.RGB, inputColor);
 
         double pixelRemovalFactor = removalFactor;
-        gradientColor[ColorModel.R] = gradientColor[ColorModel.R] * pixelRemovalFactor;
-        gradientColor[ColorModel.G] = gradientColor[ColorModel.G] * pixelRemovalFactor;
-        gradientColor[ColorModel.B] = gradientColor[ColorModel.B] * pixelRemovalFactor;
+        gradientColor[ColorModel.RGB.R] = gradientColor[ColorModel.RGB.R] * pixelRemovalFactor;
+        gradientColor[ColorModel.RGB.G] = gradientColor[ColorModel.RGB.G] * pixelRemovalFactor;
+        gradientColor[ColorModel.RGB.B] = gradientColor[ColorModel.RGB.B] * pixelRemovalFactor;
         if (adaptiveGradient) {
 //          HSVColor imageHSV = HSVColor.fromRGB(inputColor);
 //          HSVColor gradientHSV = HSVColor.fromRGB(gradientColor);
@@ -164,9 +164,9 @@ public class GradientRemover {
           gradient.setPixel(x, y, ColorModel.RGB, gradientColor);
         }
 
-        outputColor[ColorModel.R] = sampleSubtraction.subtract(inputColor[ColorModel.R], gradientColor[ColorModel.R]);
-        outputColor[ColorModel.G] = sampleSubtraction.subtract(inputColor[ColorModel.G], gradientColor[ColorModel.G]);
-        outputColor[ColorModel.B] = sampleSubtraction.subtract(inputColor[ColorModel.B], gradientColor[ColorModel.B]);
+        outputColor[ColorModel.RGB.R] = sampleSubtraction.subtract(inputColor[ColorModel.RGB.R], gradientColor[ColorModel.RGB.R]);
+        outputColor[ColorModel.RGB.G] = sampleSubtraction.subtract(inputColor[ColorModel.RGB.G], gradientColor[ColorModel.RGB.G]);
+        outputColor[ColorModel.RGB.B] = sampleSubtraction.subtract(inputColor[ColorModel.RGB.B], gradientColor[ColorModel.RGB.B]);
 
         if (output != null) {
           output.setPixel(x, y, ColorModel.RGB, outputColor);

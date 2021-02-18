@@ -37,17 +37,17 @@ public class TiffDoubleImage implements DoubleImage {
 
     Number[] pixel = image.getPixel(x, y);
     if (pixel[0] instanceof Double) {
-      samples[ColorModel.R] = (double) pixel[0];
-      samples[ColorModel.G] = (double) pixel[1];
-      samples[ColorModel.B] = (double) pixel[2];
+      samples[ColorModel.RGB.R] = (double) pixel[0];
+      samples[ColorModel.RGB.G] = (double) pixel[1];
+      samples[ColorModel.RGB.B] = (double) pixel[2];
     } else if (pixel[0] instanceof Float) {
-      samples[ColorModel.R] = (float) pixel[0];
-      samples[ColorModel.G] = (float) pixel[1];
-      samples[ColorModel.B] = (float) pixel[2];
+      samples[ColorModel.RGB.R] = (float) pixel[0];
+      samples[ColorModel.RGB.G] = (float) pixel[1];
+      samples[ColorModel.RGB.B] = (float) pixel[2];
     } else {
-      samples[ColorModel.R] = pixel[0].doubleValue() / 256.0;
-      samples[ColorModel.G] = pixel[1].doubleValue() / 256.0;
-      samples[ColorModel.B] = pixel[2].doubleValue() / 256.0;
+      samples[ColorModel.RGB.R] = pixel[0].doubleValue() / 256.0;
+      samples[ColorModel.RGB.G] = pixel[1].doubleValue() / 256.0;
+      samples[ColorModel.RGB.B] = pixel[2].doubleValue() / 256.0;
     }
 
     if (model == ColorModel.HSV) {
@@ -66,7 +66,7 @@ public class TiffDoubleImage implements DoubleImage {
       rgbSamples = samples;
     }
 
-    image.setPixel(x, y, new Float[] { (float) rgbSamples[ColorModel.R], (float) rgbSamples[ColorModel.G], (float) rgbSamples[ColorModel.B] });
+    image.setPixel(x, y, new Float[] { (float) rgbSamples[ColorModel.RGB.R], (float) rgbSamples[ColorModel.RGB.G], (float) rgbSamples[ColorModel.RGB.B] });
   }
 
 }

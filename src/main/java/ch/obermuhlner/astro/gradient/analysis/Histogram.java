@@ -96,7 +96,7 @@ public class Histogram {
 
   private void addSample(double[] pixel, int sampleIndex) {
     double value = pixel[sampleIndex];
-    if (colorModel == ColorModel.HSV && sampleIndex == ColorModel.H) {
+    if (colorModel == ColorModel.HSV && sampleIndex == ColorModel.HSV.H) {
       value = value / 360.0;
     }
     int binIndex = (int) (value * binCount);

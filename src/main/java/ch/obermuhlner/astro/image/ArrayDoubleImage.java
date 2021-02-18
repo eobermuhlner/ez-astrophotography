@@ -45,29 +45,18 @@ public class ArrayDoubleImage implements DoubleImage {
     samples[1] = data[index + 1];
     samples[2] = data[index + 2];
 
-    switch (colorModel) {
-      case RGB:
-        switch (model) {
-          case RGB:
-            // do nothing
-            break;
-          case HSV:
-            ColorUtil.convertRGBtoHSV(samples, samples);
-            break;
-        }
-        break;
-      case HSV:
-        switch (model) {
-          case RGB:
-            ColorUtil.convertHSVtoRGB(samples, samples);
-            break;
-          case HSV:
-            // do nothing
-            break;
-        }
-        break;
-      default:
-        throw new IllegalArgumentException("Unknown: " + colorModel);
+    if (ColorModel.RGB.equals(colorModel)) {
+      if (ColorModel.HSV.equals(model)) {
+        ColorUtil.convertRGBtoHSV(samples, samples);
+      }
+    }
+    else if (ColorModel.HSV.equals(colorModel)) {
+      if (ColorModel.RGB.equals(model)) {
+        ColorUtil.convertHSVtoRGB(samples, samples);
+      }
+    }
+    else {
+      throw new IllegalArgumentException("Unknown: " + colorModel);
     }
 
     return samples;
@@ -81,29 +70,18 @@ public class ArrayDoubleImage implements DoubleImage {
     data[index + 1] = samples[1];
     data[index + 2] = samples[2];
 
-    switch (colorModel) {
-      case RGB:
-        switch (model) {
-          case RGB:
-            // do nothing
-            break;
-          case HSV:
-            ColorUtil.convertRGBtoHSV(data, data, index, index);
-            break;
-        }
-        break;
-      case HSV:
-        switch (model) {
-          case RGB:
-            ColorUtil.convertHSVtoRGB(data, data, index, index);
-            break;
-          case HSV:
-            // do nothing
-            break;
-        }
-        break;
-      default:
-        throw new IllegalArgumentException("Unknown: " + colorModel);
+    if (ColorModel.RGB.equals(colorModel)) {
+      if (ColorModel.HSV.equals(model)) {
+        ColorUtil.convertRGBtoHSV(data, data, index, index);
+      }
+    }
+    else if (ColorModel.HSV.equals(colorModel)) {
+      if (ColorModel.RGB.equals(model)) {
+        ColorUtil.convertHSVtoRGB(data, data, index, index);
+      }
+    }
+    else {
+      throw new IllegalArgumentException("Unknown: " + colorModel);
     }
   }
 }

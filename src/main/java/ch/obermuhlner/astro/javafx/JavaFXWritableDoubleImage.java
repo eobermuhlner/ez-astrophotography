@@ -31,9 +31,9 @@ public class JavaFXWritableDoubleImage implements DoubleImage {
 
     int rgb = image.getPixelReader().getArgb(x, y);
 
-    samples[ColorModel.R] = ((rgb >> 16) & 0xff) / 255.0;
-    samples[ColorModel.G] = ((rgb >> 8) & 0xff) / 255.0;
-    samples[ColorModel.B] = (rgb & 0xff) / 255.0;
+    samples[ColorModel.RGB.R] = ((rgb >> 16) & 0xff) / 255.0;
+    samples[ColorModel.RGB.G] = ((rgb >> 8) & 0xff) / 255.0;
+    samples[ColorModel.RGB.B] = (rgb & 0xff) / 255.0;
 
     if (model == ColorModel.HSV) {
       ColorUtil.convertRGBtoHSV(samples, samples);

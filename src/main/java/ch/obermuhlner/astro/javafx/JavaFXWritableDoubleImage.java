@@ -1,7 +1,7 @@
 package ch.obermuhlner.astro.javafx;
 
-import ch.obermuhlner.astro.image.ColorModel;
-import ch.obermuhlner.astro.image.ColorUtil;
+import ch.obermuhlner.astro.image.color.ColorModel;
+import ch.obermuhlner.astro.image.color.ColorUtil;
 import ch.obermuhlner.astro.image.DoubleImage;
 import javafx.scene.image.WritableImage;
 

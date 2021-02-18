@@ -1,5 +1,7 @@
 package ch.obermuhlner.astro.image;
 
+import ch.obermuhlner.astro.image.color.ColorModel;
+
 import java.util.Arrays;
 
 public class ImageUtil {

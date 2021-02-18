@@ -1,5 +1,8 @@
 package ch.obermuhlner.astro.image;
 
+import ch.obermuhlner.astro.image.color.ColorModel;
+import ch.obermuhlner.astro.image.color.ColorUtil;
+
 public class ArrayDoubleImage implements DoubleImage {
 
   private static final int SAMPLES_PER_PIXEL = 3;

@@ -1,6 +1,6 @@
 package ch.obermuhlner.astro.javafx;
 
-import ch.obermuhlner.astro.image.ColorModel;
+import ch.obermuhlner.astro.image.color.ColorModel;
 
 public enum SampleChannel {
   Red(ColorModel.RGB, 0),

@@ -2,10 +2,9 @@ package ch.obermuhlner.astro.gradient;
 
 import ch.obermuhlner.astro.gradient.correction.LinearSampleSubtraction;
 import ch.obermuhlner.astro.gradient.correction.SampleSubtraction;
-import ch.obermuhlner.astro.gradient.correction.SplineSampleSubtraction;
 import ch.obermuhlner.astro.gradient.points.AllPointsFinder;
 import ch.obermuhlner.astro.gradient.points.PointsFinder;
-import ch.obermuhlner.astro.image.ColorModel;
+import ch.obermuhlner.astro.image.color.ColorModel;
 import ch.obermuhlner.astro.image.DoubleImage;
 import ch.obermuhlner.astro.image.ImageUtil;
 

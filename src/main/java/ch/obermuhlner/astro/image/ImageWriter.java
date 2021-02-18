@@ -1,5 +1,6 @@
 package ch.obermuhlner.astro.image;
 
+import ch.obermuhlner.astro.image.color.ColorModel;
 import mil.nga.tiff.TiffWriter;
 
 import javax.imageio.ImageIO;
@@ -38,8 +39,8 @@ public class ImageWriter {
       DoubleImage imageCopy = ImageCreator.create(width, height, ImageQuality.Standard);
       for (int y = 0; y < height; y++) {
         for (int x = 0; x < width; x++) {
-          image.getPixel(x, y, ColorModel.RGB, rgb);
-          imageCopy.setPixel(x, y, ColorModel.RGB, rgb);
+          image.getPixel(x, y, ch.obermuhlner.astro.image.color.ColorModel.RGB, rgb);
+          imageCopy.setPixel(x, y, ch.obermuhlner.astro.image.color.ColorModel.RGB, rgb);
         }
       }
       image = imageCopy;

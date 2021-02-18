@@ -1,5 +1,8 @@
 package ch.obermuhlner.astro.image;
 
+import ch.obermuhlner.astro.image.color.ColorModel;
+import ch.obermuhlner.astro.image.color.ColorUtil;
+
 import java.awt.image.*;
 
 public class AwtBufferedDoubleImage implements DoubleImage {
@@ -21,18 +24,18 @@ public class AwtBufferedDoubleImage implements DoubleImage {
   }
 
   @Override
-  public double[] getPixel(int x, int y, ColorModel model, double[] samples) {
+  public double[] getPixel(int x, int y, ch.obermuhlner.astro.image.color.ColorModel model, double[] samples) {
     if (samples == null) {
       samples = new double[3];
     }
 
     int rgb = image.getRGB(x, y);
 
-    samples[ColorModel.R] = ((rgb >> 16) & 0xff) / 255.0;
-    samples[ColorModel.G] = ((rgb >> 8) & 0xff) / 255.0;
-    samples[ColorModel.B] = (rgb & 0xff) / 255.0;
+    samples[ch.obermuhlner.astro.image.color.ColorModel.R] = ((rgb >> 16) & 0xff) / 255.0;
+    samples[ch.obermuhlner.astro.image.color.ColorModel.G] = ((rgb >> 8) & 0xff) / 255.0;
+    samples[ch.obermuhlner.astro.image.color.ColorModel.B] = (rgb & 0xff) / 255.0;
 
-    if (model == ColorModel.HSV) {
+    if (model == ch.obermuhlner.astro.image.color.ColorModel.HSV) {
         ColorUtil.convertRGBtoHSV(samples, samples);
     }
 
@@ -40,7 +43,7 @@ public class AwtBufferedDoubleImage implements DoubleImage {
   }
 
   @Override
-  public void setPixel(int x, int y, ColorModel model, double[] samples) {
+  public void setPixel(int x, int y, ch.obermuhlner.astro.image.color.ColorModel model, double[] samples) {
     double[] rgbSamples;
     if (model == ColorModel.HSV) {
       rgbSamples = ColorUtil.convertHSVtoRGB(samples, null);

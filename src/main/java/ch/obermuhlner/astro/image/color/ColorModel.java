@@ -1,4 +1,4 @@
-package ch.obermuhlner.astro.image;
+package ch.obermuhlner.astro.image.color;
 
 public enum ColorModel {
   RGB,

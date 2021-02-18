@@ -1,6 +1,6 @@
 package ch.obermuhlner.astro.gradient.filter;
 
-import ch.obermuhlner.astro.image.ColorModel;
+import ch.obermuhlner.astro.image.color.ColorModel;
 import ch.obermuhlner.astro.image.DoubleImage;
 import ch.obermuhlner.astro.image.ImageUtil;
 

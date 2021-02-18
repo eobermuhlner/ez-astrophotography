@@ -10,7 +10,7 @@ import ch.obermuhlner.astro.gradient.correction.SplineSampleSubtraction;
 import ch.obermuhlner.astro.gradient.filter.BoxBlurFilter;
 import ch.obermuhlner.astro.gradient.filter.Filter;
 import ch.obermuhlner.astro.gradient.filter.GaussianBlurFilter;
-import ch.obermuhlner.astro.image.ColorModel;
+import ch.obermuhlner.astro.image.color.ColorModel;
 import ch.obermuhlner.astro.image.DoubleImage;
 import ch.obermuhlner.astro.image.ImageCreator;
 import ch.obermuhlner.astro.image.ImageQuality;

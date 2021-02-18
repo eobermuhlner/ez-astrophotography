@@ -1,5 +1,7 @@
 package ch.obermuhlner.astro.image;
 
+import ch.obermuhlner.astro.image.color.ColorModel;
+
 public class SubDoubleImage implements DoubleImage {
 
   private final DoubleImage image;

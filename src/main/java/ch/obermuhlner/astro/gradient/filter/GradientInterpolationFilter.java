@@ -16,7 +16,6 @@ public class GradientInterpolationFilter implements Filter {
 
   private PointsFinder pointsFinder = new AllPointsFinder();
   private double interpolationPower = 3.0;
-  private double removalFactor = 1.0;
   private boolean adaptiveGradient = false;
 
   private final Map<Point, double[]> mapPointToColor = new HashMap<>();
@@ -31,14 +30,6 @@ public class GradientInterpolationFilter implements Filter {
   public void setPointsFinder(PointsFinder pointsFinder) {
     this.pointsFinder = pointsFinder;
     pointsFinder.setFixPoints(mapPointToColor.keySet());
-  }
-
-  public void setRemovalFactor(double removalFactor) {
-    this.removalFactor = removalFactor;
-  }
-
-  public double getRemovalFactor() {
-    return removalFactor;
   }
 
   public void setInterpolationPower(double interpolationPower) {
@@ -130,10 +121,9 @@ public class GradientInterpolationFilter implements Filter {
 
         source.getPixel(x, y, ColorModel.RGB, sourceColor);
 
-        double pixelRemovalFactor = removalFactor;
-        gradientColor[ColorModel.RGB.R] = gradientColor[ColorModel.RGB.R] * pixelRemovalFactor;
-        gradientColor[ColorModel.RGB.G] = gradientColor[ColorModel.RGB.G] * pixelRemovalFactor;
-        gradientColor[ColorModel.RGB.B] = gradientColor[ColorModel.RGB.B] * pixelRemovalFactor;
+        gradientColor[ColorModel.RGB.R] = gradientColor[ColorModel.RGB.R];
+        gradientColor[ColorModel.RGB.G] = gradientColor[ColorModel.RGB.G];
+        gradientColor[ColorModel.RGB.B] = gradientColor[ColorModel.RGB.B];
         if (adaptiveGradient) {
 //          HSVColor imageHSV = HSVColor.fromRGB(inputColor);
 //          HSVColor gradientHSV = HSVColor.fromRGB(gradientColor);
@@ -154,7 +144,6 @@ public class GradientInterpolationFilter implements Filter {
     return "Gradient{" +
         "pointsFinder=" + pointsFinder +
         ", interpolationPower=" + interpolationPower +
-        ", removalFactor=" + removalFactor +
         ", adaptiveGradient=" + adaptiveGradient +
         ", mapPointToColor=" + mapPointToColor +
         '}';

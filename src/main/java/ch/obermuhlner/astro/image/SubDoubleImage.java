@@ -34,6 +34,11 @@ public class SubDoubleImage implements DoubleImage {
   }
 
   @Override
+  public boolean isReallyInside(int x, int y) {
+    return isInside(x, y) && image.isInside(x + offsetX, y + offsetY);
+  }
+
+  @Override
   public double[] getNativePixel(int x, int y, double[] samples) {
     int xx = Math.max(0, Math.min(image.getWidth() - 1, x + offsetX));
     int yy = Math.max(0, Math.min(image.getHeight() - 1, y + offsetY));

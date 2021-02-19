@@ -3,8 +3,10 @@ package ch.obermuhlner.astro.image;
 import ch.obermuhlner.astro.image.color.ColorModel;
 import ch.obermuhlner.astro.image.color.ColorUtil;
 
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.List;
 
 public interface DoubleImage {
 
@@ -81,6 +83,10 @@ public interface DoubleImage {
     return x >= 0 && y >= 0 && x < getWidth() && y < getHeight();
   }
 
+  default boolean isReallyInside(int x, int y) {
+    return isInside(x, y);
+  }
+
   default DoubleImage subImage(int x, int y, int width, int height) {
     return new SubDoubleImage(this, x, y, width, height);
   }
@@ -94,16 +100,19 @@ public interface DoubleImage {
       color = new double[3];
     }
 
-    int n = getWidth() * getHeight();
+    int n = 0;
     double sample0 = 0;
     double sample1 = 0;
     double sample2 = 0;
     for (int y = 0; y < getHeight(); y++) {
       for (int x = 0; x < getWidth(); x++) {
-        getPixel(x, y, colorModel, color);
-        sample0 += color[0];
-        sample1 += color[1];
-        sample2 += color[2];
+        if (isReallyInside(x, y)) {
+          getPixel(x, y, colorModel, color);
+          sample0 += color[0];
+          sample1 += color[1];
+          sample2 += color[2];
+          n++;
+        }
       }
     }
     color[0] = sample0 / n;
@@ -121,29 +130,32 @@ public interface DoubleImage {
       color = new double[3];
     }
 
-    int n = getWidth() * getHeight();
-    double[][] data = new double[n][];
-    int index = 0;
+    List<double[]> data = new ArrayList<>(getWidth() * getHeight());
     for (int y = 0; y < getHeight(); y++) {
       for (int x = 0; x < getWidth(); x++) {
-        double[] sample = getPixel(x, y, ColorModel.HSV, null);
-        data[index++] = sample;
+        if (isReallyInside(x, y)) {
+          double[] sample = getPixel(x, y, ColorModel.HSV, null);
+          data.add(sample);
+        }
       }
     }
 
-    Arrays.sort(data, Comparator.<double[]>
+    Collections.sort(data, Comparator.<double[]>
         comparingDouble(c -> c[ColorModel.HSV.V])
         .thenComparing(c -> c[ColorModel.HSV.S])
         .thenComparing(c -> c[ColorModel.HSV.H]));
 
+    int n = data.size();
+    int nHalf = n / 2;
+    int nHalfPlus1 = nHalf + 1;
     if (n % 2 == 0) {
-      color[0] = (data[n/2][ColorModel.HSV.H] + data[n/2+1][ColorModel.HSV.H]) / 2;
-      color[1] = (data[n/2][ColorModel.HSV.S] + data[n/2+1][ColorModel.HSV.S]) / 2;
-      color[2] = (data[n/2][ColorModel.HSV.V] + data[n/2+1][ColorModel.HSV.V]) / 2;
+      color[0] = (data.get(nHalf)[ColorModel.HSV.H] + data.get(nHalfPlus1)[ColorModel.HSV.H]) / 2;
+      color[1] = (data.get(nHalf)[ColorModel.HSV.S] + data.get(nHalfPlus1)[ColorModel.HSV.S]) / 2;
+      color[2] = (data.get(nHalf)[ColorModel.HSV.V] + data.get(nHalfPlus1)[ColorModel.HSV.V]) / 2;
     } else {
-      color[0] = data[n/2][ColorModel.HSV.H];
-      color[1] = data[n/2][ColorModel.HSV.S];
-      color[2] = data[n/2][ColorModel.HSV.V];
+      color[0] = data.get(nHalf)[ColorModel.HSV.H];
+      color[1] = data.get(nHalf)[ColorModel.HSV.S];
+      color[2] = data.get(nHalf)[ColorModel.HSV.V];
     }
 
     return ColorUtil.convert(color, ColorModel.HSV, color, colorModel);

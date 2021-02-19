@@ -3,7 +3,7 @@ package ch.obermuhlner.astro.gradient.filter;
 import ch.obermuhlner.astro.image.color.ColorModel;
 import ch.obermuhlner.astro.image.DoubleImage;
 
-public class BoxBlurFilter implements Filter {
+public class BoxBlurFilter extends AbstractFilter {
 
   private final int radius;
   private final ColorModel model;
@@ -16,28 +16,24 @@ public class BoxBlurFilter implements Filter {
   }
 
   @Override
-  public void filter(DoubleImage source, DoubleImage target, int width, int height) {
-    double[] samples = new double[3];
-    for (int dy = 0; dy < height; dy++) {
-      for (int dx = 0; dx < width; dx++) {
-        double sum0 = 0;
-        double sum1 = 0;
-        double sum2 = 0;
-        for (int kx = dx-radius; kx < dx+radius; kx++) {
-          for (int ky = dy-radius; ky < dy+radius; ky++) {
-            source.getPixel(kx, ky, model, samples);
-            sum0 += samples[0];
-            sum1 += samples[1];
-            sum2 += samples[2];
-          }
-        }
-        samples[0] = sum0 / kernelSize;
-        samples[1] = sum1 / kernelSize;
-        samples[2] = sum2 / kernelSize;
-        target.setPixel(dx, dy, model, samples);
+  protected double[] filterPixel(DoubleImage source, int x, int y, ColorModel colorModel, double[] samples) {
+    double sum0 = 0;
+    double sum1 = 0;
+    double sum2 = 0;
+    for (int kx = x-radius; kx < x+radius; kx++) {
+      for (int ky = y-radius; ky < y+radius; ky++) {
+        source.getPixel(kx, ky, model, samples);
+        sum0 += samples[0];
+        sum1 += samples[1];
+        sum2 += samples[2];
       }
     }
+    samples[0] = sum0 / kernelSize;
+    samples[1] = sum1 / kernelSize;
+    samples[2] = sum2 / kernelSize;
+    return samples;
   }
+
 
   @Override
   public String toString() {

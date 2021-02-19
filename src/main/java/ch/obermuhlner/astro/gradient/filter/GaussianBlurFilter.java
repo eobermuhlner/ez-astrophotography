@@ -16,7 +16,7 @@ public class GaussianBlurFilter implements Filter {
     this.model = model;
   }
 
-  public void filter(DoubleImage source, DoubleImage target, int width, int height) {
+  public DoubleImage filter(DoubleImage source, DoubleImage target, int width, int height) {
     SwapImage temp = new SwapImage(
         new ArrayDoubleImage(width, height, model),
         new ArrayDoubleImage(width, height, model)
@@ -32,6 +32,7 @@ public class GaussianBlurFilter implements Filter {
     }
 
     ImageUtil.copyPixels(temp.source, 0, 0, target, 0, 0, width, height, model);
+    return target;
   }
 
   private static class SwapImage {

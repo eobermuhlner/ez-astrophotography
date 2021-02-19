@@ -12,7 +12,7 @@ public class CopyFilter implements Filter {
   }
 
   @Override
-  public void filter(DoubleImage source, DoubleImage target, int width, int height) {
+  public DoubleImage filter(DoubleImage source, DoubleImage target, int width, int height) {
     double[] samples = new double[3];
     for (int dy = 0; dy < height; dy++) {
       for (int dx = 0; dx < width; dx++) {
@@ -27,6 +27,7 @@ public class CopyFilter implements Filter {
         target.setPixel(dx, dy, model, samples);
       }
     }
+    return target;
   }
 
   @Override

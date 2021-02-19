@@ -2,42 +2,44 @@ package ch.obermuhlner.astro.app;
 
 import ch.obermuhlner.astro.app.CommandParser.Command;
 import ch.obermuhlner.astro.app.CommandParser.Option;
-import ch.obermuhlner.astro.gradient.GradientRemover;
 import ch.obermuhlner.astro.gradient.Point;
-import ch.obermuhlner.astro.gradient.correction.LinearSampleSubtraction;
-import ch.obermuhlner.astro.gradient.correction.SimpleSampleSubtraction;
-import ch.obermuhlner.astro.gradient.correction.SplineSampleSubtraction;
-import ch.obermuhlner.astro.gradient.filter.BoxBlurFilter;
 import ch.obermuhlner.astro.gradient.filter.Filter;
 import ch.obermuhlner.astro.gradient.filter.GaussianBlurFilter;
+import ch.obermuhlner.astro.gradient.filter.GradientInterpolationFilter;
+import ch.obermuhlner.astro.gradient.operation.ImageOperation;
+import ch.obermuhlner.astro.gradient.operation.SubtractLinearImageOperation;
 import ch.obermuhlner.astro.image.color.ColorModel;
 import ch.obermuhlner.astro.image.DoubleImage;
 import ch.obermuhlner.astro.image.ImageCreator;
 import ch.obermuhlner.astro.image.ImageQuality;
 import ch.obermuhlner.astro.image.ImageReader;
-import ch.obermuhlner.astro.image.ImageUtil;
 import ch.obermuhlner.astro.image.ImageWriter;
 
+import javax.script.ScriptEngine;
+import javax.script.ScriptEngineManager;
+import javax.script.ScriptException;
 import java.io.File;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 
 public class Astrophotography {
 
-  public static void main(String[] args) throws IOException {
-    GradientRemover gradientRemover = new GradientRemover();
-    List<Filter> filters = new ArrayList<>();
+  public static void mainScript(String[] args) throws IOException, ScriptException {
+    runScript();
+  }
 
+  public static void main(String[] args) throws IOException, ScriptException {
     String outputFilePrefix = "output_";
     List<File> inputFiles = new ArrayList<>();
     List<File> outputFiles = new ArrayList<>();
-    List<Point> gradientPoints = new ArrayList<>();
-    AtomicInteger sampleRadius = new AtomicInteger(5);
+
+    AtomicReference<Filter> gradientFilter = new AtomicReference<>(new GaussianBlurFilter(100, ColorModel.RGB));
+    AtomicReference<ImageOperation> subtractOperation = new AtomicReference<>(new SubtractLinearImageOperation());
 
     CommandParser commandParser = new CommandParser();
 
@@ -71,61 +73,23 @@ public class Astrophotography {
             new Option("interpolationpower", 1)
         ),
         (commandArguments, optionsWithArguments) -> {
+          GradientInterpolationFilter gradientInterpolationFilter = new GradientInterpolationFilter();
+          List<Point> gradientPoints = new ArrayList<>();
+
           optionsWithArguments.handleOption("point", arguments -> {
             gradientPoints.add(toPoint(arguments.get(0)));
           });
           optionsWithArguments.handleOption("sampleradius", arguments -> {
-            sampleRadius.set(Integer.parseInt(arguments.get(0)));
+           //sampleRadius.set(Integer.parseInt(arguments.get(0)));
           });
           optionsWithArguments.handleOption("removal", arguments -> {
-            gradientRemover.setRemovalFactor(Double.parseDouble(arguments.get(0)));
+            gradientInterpolationFilter.setRemovalFactor(Double.parseDouble(arguments.get(0)));
           });
           optionsWithArguments.handleOption("interpolationpower", arguments -> {
-            gradientRemover.setInterpolationPower(Double.parseDouble(arguments.get(0)));
+            gradientInterpolationFilter.setInterpolationPower(Double.parseDouble(arguments.get(0)));
           });
-        }
-    );
-    commandParser.add(
-        new Command("filter", 0,
-            new Option("box-blur", 1),
-            new Option("gaussian-blur", 1)
-        ),
-        (commandArguments, optionsWithArguments) -> {
-          optionsWithArguments.handleOption("box-blur", arguments -> {
-            filters.add(new BoxBlurFilter(Integer.parseInt(arguments.get(0)), ColorModel.RGB));
-          });
-          optionsWithArguments.handleOption("gaussian-blur", arguments -> {
-            filters.add(new GaussianBlurFilter(Integer.parseInt(arguments.get(0)), ColorModel.RGB));
-          });
-        }
-    );
-    commandParser.add(
-        new Command("curve-subtract", 0),
-        (commandArguments, optionsWithArguments) -> {
-          gradientRemover.setSampleSubtraction(new SimpleSampleSubtraction());
-        }
-    );
-    commandParser.add(
-        new Command("curve-linear", 0),
-        (commandArguments, optionsWithArguments) -> {
-          gradientRemover.setSampleSubtraction(new LinearSampleSubtraction());
-        }
-    );
-    commandParser.add(
-        new Command("curve-spline", 0,
-            new Option("gradient-factor", 1),
-            new Option("stretch", 2)
-        ),
-        (commandArguments, optionsWithArguments) -> {
-          double gradientFactor = Double.parseDouble(optionsWithArguments.getOptionArguments("gradient-factor", "0.01").get(0));
-          List<String> stretchArgs = optionsWithArguments.getOptionArguments("stretch");
-          if (stretchArgs.isEmpty()) {
-            double stretchX = Double.parseDouble(stretchArgs.get(0));
-            double stretchY = Double.parseDouble(stretchArgs.get(1));
-            gradientRemover.setSampleSubtraction(new SplineSampleSubtraction(gradientFactor, stretchX, stretchY));
-          } else {
-            gradientRemover.setSampleSubtraction(new SplineSampleSubtraction(gradientFactor));
-          }
+
+          gradientFilter.set(gradientInterpolationFilter);
         }
     );
     commandParser.add(
@@ -138,11 +102,8 @@ public class Astrophotography {
     commandParser.parse(new String[] {
         "input", "images/Autosave001.tif",
 //        "input", "images/inputs/Autosave001_small_compress0.png",
-//        "gradient", "--point", "100,100", "--point", "-100,-100",
-        "gradient",
-//        "curve-linear",
-//        "curve-spline", "--gradient-factor", "0.02", "--stretch", "0.6", "0.9",
-//        "filter", "--gaussian-blur", "3",
+//        "gaussian-blur", "50",
+        "gradient", "--point", "100,100", "--point", "-100,-100",
         "output", "images/Test.png"
 
     });
@@ -160,25 +121,13 @@ public class Astrophotography {
       System.out.println("Load " + inputFile);
 
       DoubleImage inputImage = ImageReader.read(inputFile, ImageQuality.High);
+
+      System.out.println("Create gradient " + gradientFilter.get());
+      DoubleImage gradientImage = gradientFilter.get().filter(inputImage);
+
+      System.out.println("Subtract gradient " + subtractOperation.get());
       DoubleImage outputImage = ImageCreator.create(inputImage.getWidth(), inputImage.getHeight(), ImageQuality.High);
-
-      if (!filters.isEmpty()) {
-        for (Filter filter : filters) {
-          System.out.println("Process filter " + filter);
-          filter.filter(inputImage, outputImage);
-        }
-      } else {
-        if (gradientPoints.isEmpty()) {
-          autoSetFixPoints(gradientRemover, inputImage);
-        } else {
-          List<Point> correctFixPoints = correctFixPoints(gradientPoints, inputImage);
-          System.out.println("Set fix points " + correctFixPoints);
-          gradientRemover.setFixPoints(correctFixPoints, inputImage, sampleRadius.get());
-        }
-
-        System.out.println("Remove gradient");
-        gradientRemover.removeGradient(inputImage, null, outputImage);
-      }
+      subtractOperation.get().operation(inputImage, gradientImage, outputImage);
 
       System.out.println("Save " + outputFile);
       ImageWriter.write(outputImage, outputFile);
@@ -187,7 +136,7 @@ public class Astrophotography {
     }
   }
 
-  private static void autoSetFixPoints(GradientRemover gradientRemover, DoubleImage image) {
+  private static void autoSetFixPoints(GradientInterpolationFilter gradientInterpolationFilter, DoubleImage image) {
     int sampleWidth = image.getWidth() / 5;
     int sampleHeight = image.getHeight() / 5;
 
@@ -199,14 +148,14 @@ public class Astrophotography {
     int x2 = sampleWidth / 2;
     int y2 = image.getHeight() - sampleHeight / 2;
     double[] color2 = image.medianPixel(x2, y2, sampleWidth, sampleHeight, ColorModel.RGB, null);
-    System.out.println("Auto median pixel1: " + Arrays.toString(color2));
+    System.out.println("Auto median pixel2: " + Arrays.toString(color2));
 
     int x3 = image.getWidth() - sampleWidth / 2;
     int y3 = image.getHeight() - sampleHeight / 2;
     double[] color3 = image.medianPixel(x3, y3, sampleWidth, sampleHeight, ColorModel.RGB, null);
-    System.out.println("Auto median pixel1: " + Arrays.toString(color3));
+    System.out.println("Auto median pixel3: " + Arrays.toString(color3));
 
-    gradientRemover.setFixPoints(
+    gradientInterpolationFilter.setFixPoints(
         Arrays.asList(new Point(x1, y1), new Point(x2, y2), new Point(x3, y3)),
         Arrays.asList(color1, color2, color3));
   }
@@ -242,4 +191,46 @@ public class Astrophotography {
     String[] split = string.split(Pattern.quote(","));
     return new Point(Integer.parseInt(split[0]), Integer.parseInt(split[1]));
   }
+
+  private static void runScript() throws ScriptException {
+    ScriptEngineManager manager = new ScriptEngineManager();
+    ScriptEngine engine = manager.getEngineByName("jshell");
+
+//    String script = "" +
+//        "import static ch.obermuhlner.astro.app.Astrophotography.*;" +
+//        "var input = loadImage(\"images/Autosave001.tif\");" +
+//        "var gradient = gaussianBlur(input, 200);" +
+//        "var output = subtractLinear(input, gradient);" +
+//        "saveImage(output, \"images/Test.png\");";
+
+    String script = "" +
+        "import static ch.obermuhlner.astro.app.Astrophotography.*;" +
+        "var input = loadImage(\"images/Autosave001.tif_debug_gradient.tif\");" +
+//        "var gradient = gradient(input);" +
+        "var gradient = gaussianBlur(input, 200);" +
+        "saveImage(gradient, \"images/TestGradient.png\");" +
+        "var output = subtractLinear(input, gradient);" +
+        "saveImage(output, \"images/TestOutput.png\");";
+
+    engine.eval(script);
+  }
+
+  public static DoubleImage loadImage(String filename) throws IOException {
+    return ImageReader.read(new File(filename), ImageQuality.High);
+  }
+  public static void saveImage(DoubleImage image, String filename) throws IOException {
+    ImageWriter.write(image, new File(filename));
+  }
+  public static DoubleImage gaussianBlur(DoubleImage image, int radius) throws IOException {
+    return new GaussianBlurFilter(radius, ColorModel.RGB).filter(image);
+  }
+  public static DoubleImage gradient(DoubleImage image) throws IOException {
+    GradientInterpolationFilter gradientInterpolationFilter = new GradientInterpolationFilter();
+    autoSetFixPoints(gradientInterpolationFilter, image);
+    return gradientInterpolationFilter.filter(image);
+  }
+  public static DoubleImage subtractLinear(DoubleImage image1, DoubleImage image2) throws IOException {
+    return new SubtractLinearImageOperation().operation(image1, image2);
+  }
+
 }

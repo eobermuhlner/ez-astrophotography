@@ -24,6 +24,7 @@ javafx {
 
 dependencies {
     //implementation 'mil.nga:tiff:2.0.2'
+    compile 'ch.obermuhlner:jshell-scriptengine:1.1.0'
 
     testImplementation 'junit:junit:4.12'
 }

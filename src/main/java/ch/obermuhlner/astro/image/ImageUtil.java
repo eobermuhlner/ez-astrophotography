@@ -6,53 +6,6 @@ import java.util.Arrays;
 
 public class ImageUtil {
 
-  public static void copyPixels(DoubleImage source, DoubleImage target, ColorModel model) {
-    copyPixels(source, 0, 0, target, 0, 0, source.getWidth(), source.getHeight(), model);
-  }
-
-  public static void copyPixels(DoubleImage source, int sourceX, int sourceY, DoubleImage target, int targetX, int targetY, int width, int height, ColorModel model) {
-    double[] samples = new double[3];
-    for (int dy = 0; dy < height; dy++) {
-      for (int dx = 0; dx < width; dx++) {
-        if (source.isInside(sourceX + dx, sourceY + dy)) {
-          source.getPixel(sourceX + dx, sourceY + dy, model, samples);
-        } else {
-          samples[0] = 0;
-          samples[1] = 0;
-          samples[2] = 0;
-        }
-        target.setPixel(targetX + dx, targetY + dy, model, samples);
-      }
-    }
-  }
-
-  public static double[] averagePixel(DoubleImage image, int x, int y, int sampleRadius, ColorModel colorModel, double[] color) {
-    if (color == null) {
-      color = new double[3];
-    }
-
-    int n = 0;
-    double sample0 = 0;
-    double sample1 = 0;
-    double sample2 = 0;
-    for (int sy = y-sampleRadius; sy <= y+sampleRadius; sy++) {
-      for (int sx = x-sampleRadius; sx < x+sampleRadius; sx++) {
-        if (image.isInside(sx, sy)) {
-          image.getPixel(sx, sy, colorModel, color);
-          sample0 += color[0];
-          sample1 += color[1];
-          sample2 += color[2];
-          n++;
-        }
-      }
-    }
-
-    color[0] = sample0 / n;
-    color[1] = sample1 / n;
-    color[2] = sample2 / n;
-    return color;
-  }
-
   public static double[] medianPixelPerSample(DoubleImage image, ColorModel colorModel, double[] color) {
     if (color == null) {
       color = new double[3];

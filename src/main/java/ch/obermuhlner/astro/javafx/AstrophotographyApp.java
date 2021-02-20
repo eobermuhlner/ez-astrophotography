@@ -1,17 +1,19 @@
 package ch.obermuhlner.astro.javafx;
 
-import ch.obermuhlner.astro.gradient.GradientRemover;
 import ch.obermuhlner.astro.gradient.Point;
 import ch.obermuhlner.astro.gradient.analysis.Histogram;
 import ch.obermuhlner.astro.gradient.correction.SampleSubtraction;
 import ch.obermuhlner.astro.gradient.correction.SimpleSampleSubtraction;
+import ch.obermuhlner.astro.gradient.filter.GradientInterpolationFilter;
+import ch.obermuhlner.astro.gradient.operation.ImageOperation;
+import ch.obermuhlner.astro.gradient.operation.SubtractLinearImageOperation;
+import ch.obermuhlner.astro.image.ArrayDoubleImage;
 import ch.obermuhlner.astro.image.color.ColorModel;
 import ch.obermuhlner.astro.image.color.ColorUtil;
 import ch.obermuhlner.astro.image.DoubleImage;
 import ch.obermuhlner.astro.image.ImageCreator;
 import ch.obermuhlner.astro.image.ImageQuality;
 import ch.obermuhlner.astro.image.ImageReader;
-import ch.obermuhlner.astro.image.ImageUtil;
 import ch.obermuhlner.astro.image.ImageWriter;
 import ch.obermuhlner.astro.image.WriteThroughArrayDoubleImage;
 import javafx.application.Application;
@@ -109,7 +111,8 @@ public class AstrophotographyApp extends Application {
 
   private final Path homeDirectory = homeDirectory();
 
-  private final GradientRemover gradientRemover = new GradientRemover();
+  private final GradientInterpolationFilter gradientInterpolationFilter = new GradientInterpolationFilter();
+  private ImageOperation gradientSubtractor = new SubtractLinearImageOperation();
 
   private final IntegerProperty zoomCenterX = new SimpleIntegerProperty();
   private final IntegerProperty zoomCenterY = new SimpleIntegerProperty();
@@ -125,7 +128,7 @@ public class AstrophotographyApp extends Application {
   private final ObjectProperty<PointFinderStrategy> pointFinderStrategy = new SimpleObjectProperty<>();
   private final DoubleProperty interpolationPower = new SimpleDoubleProperty();
   private final DoubleProperty removalFactor = new SimpleDoubleProperty();
-  private final ObjectProperty<SampleSubtractionStrategy> sampleSubtractionStrategy = new SimpleObjectProperty<>();
+  private final ObjectProperty<SubtractionStrategy> sampleSubtractionStrategy = new SimpleObjectProperty<>();
 
   private final List<Color> crosshairColors = Arrays.asList(Color.YELLOW, Color.RED, Color.GREEN, Color.BLUE, Color.TRANSPARENT);
   private final ObjectProperty<Color> crosshairColor = new SimpleObjectProperty<>(crosshairColors.get(0));
@@ -217,7 +220,7 @@ public class AstrophotographyApp extends Application {
 
       imageTabPane.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
         if (oldValue == inputTab) {
-          gradientRemover.removeGradient(inputDoubleImage, gradientDoubleImage, outputDoubleImage);
+          removeGradient(inputDoubleImage, gradientDoubleImage, outputDoubleImage);
 
           calculateDeltaImage(
               inputDoubleImage,
@@ -254,19 +257,19 @@ public class AstrophotographyApp extends Application {
       updateFixPoints();
     });
     pointFinderStrategy.addListener((observable, oldValue, newValue) -> {
-      gradientRemover.setPointsFinder(pointFinderStrategy.get().getPointsFinder());
+      gradientInterpolationFilter.setPointsFinder(pointFinderStrategy.get().getPointsFinder());
       updateZoom();
     });
     interpolationPower.addListener((observable, oldValue, newValue) -> {
-      gradientRemover.setInterpolationPower(interpolationPower.get());
+      gradientInterpolationFilter.setInterpolationPower(interpolationPower.get());
       updateZoom();
     });
-    removalFactor.addListener((observable, oldValue, newValue) -> {
-      gradientRemover.setRemovalFactor(removalFactor.get());
-      updateZoom();
-    });
+//    removalFactor.addListener((observable, oldValue, newValue) -> {
+//      gradientInterpolationFilter.setRemovalFactor(removalFactor.get());
+//      updateZoom();
+//    });
     sampleSubtractionStrategy.addListener((observable, oldValue, newValue) -> {
-      gradientRemover.setSampleSubtraction(sampleSubtractionStrategy.get().getSampleSubtraction());
+      gradientSubtractor = sampleSubtractionStrategy.get().getOperation();
       updateZoom();
     });
 
@@ -286,12 +289,17 @@ public class AstrophotographyApp extends Application {
     initializeValues();
   }
 
+  private void removeGradient(DoubleImage input, DoubleImage gradient, DoubleImage output) {
+    gradientInterpolationFilter.filter(input, gradient);
+    gradientSubtractor.operation(input, gradient, output);
+  }
+
   private void initializeValues() {
     pointFinderStrategy.set(PointFinderStrategy.All);
     setSampleRadius(5);
     interpolationPower.set(3.0);
     removalFactor.set(1.0);
-    sampleSubtractionStrategy.set(SampleSubtractionStrategy.Linear);
+    sampleSubtractionStrategy.set(SubtractionStrategy.Linear);
   }
 
   void setSampleRadius(int value) {
@@ -312,7 +320,7 @@ public class AstrophotographyApp extends Application {
       inputDecorationsPane.getChildren().add(circle);
     }
 
-    gradientRemover.setFixPoints(
+    gradientInterpolationFilter.setFixPoints(
         toPointList(fixPoints),
         inputDoubleImage,
         sampleRadius.get());
@@ -425,7 +433,7 @@ public class AstrophotographyApp extends Application {
     //DoubleImage inputImage = ImageReader.read(inputFile, ImageQuality.High);
     DoubleImage outputImage = createOutputImage(inputImage);
 
-    gradientRemover.removeGradient(inputImage, null, outputImage);
+    removeGradient(inputImage, gradientDoubleImage, outputImage);
 
     ImageWriter.write(outputImage, outputFile);
 
@@ -470,7 +478,7 @@ public class AstrophotographyApp extends Application {
 
       result = new File(properties.getProperty("input"));
       loadImage(result);
-      sampleSubtractionStrategy.set(SampleSubtractionStrategy.valueOf(properties.getProperty("glow.remover.sampleSubtractionStrategy")));
+      sampleSubtractionStrategy.set(SubtractionStrategy.valueOf(properties.getProperty("glow.remover.sampleSubtractionStrategy")));
 
       if ("gradient".equals(properties.getProperty("glow.remover"))) {
         setSampleRadius(Integer.parseInt(properties.getProperty("glow.remover.gradient.sampleRadius")));
@@ -657,29 +665,73 @@ public class AstrophotographyApp extends Application {
     ColorUtil.toIntARGB(inputDoubleImage.getPixel(zoomX, zoomY, ColorModel.RGB, rgb));
     samplePixelColor.set(new Color(rgb[ColorModel.RGB.R], rgb[ColorModel.RGB.G], rgb[ColorModel.RGB.B], 1.0));
 
-    ImageUtil.averagePixel(inputDoubleImage, zoomX, zoomY, sampleRadius.get(), ColorModel.RGB, rgb);
+    int sampleRadius1 = sampleRadius.get();
+    inputDoubleImage.averagePixel(
+        zoomX - sampleRadius1,
+        zoomY - sampleRadius1,
+        sampleRadius1 + sampleRadius1 + 1,
+        sampleRadius1 + sampleRadius1 + 1,
+        ColorModel.RGB,
+        rgb
+    );
+//    if (color == null) {
+//      color = new double[3];
+//    }
+//
+//    int n = 0;
+//    double sample0 = 0;
+//    double sample1 = 0;
+//    double sample2 = 0;
+//    for (int sy = y-sampleRadius; sy <= y+sampleRadius; sy++) {
+//      for (int sx = x-sampleRadius; sx < x+sampleRadius; sx++) {
+//        if (image.isInside(sx, sy)) {
+//          image.getPixel(sx, sy, colorModel, color);
+//          sample0 += color[0];
+//          sample1 += color[1];
+//          sample2 += color[2];
+//          n++;
+//        }
+//      }
+//    }
+//
+//    color[0] = sample0 / n;
+//    color[1] = sample1 / n;
+//    color[2] = sample2 / n;
+//    return color;
     sampleAverageColor.set(new Color(rgb[ColorModel.RGB.R], rgb[ColorModel.RGB.G], rgb[ColorModel.RGB.B], 1.0));
 
     zoomGradientDoubleImage.getPixel(ZOOM_WIDTH/2, ZOOM_HEIGHT/2, ColorModel.RGB, rgb);
     gradientPixelColor.set(new Color(rgb[ColorModel.RGB.R], rgb[ColorModel.RGB.G], rgb[ColorModel.RGB.B], 1.0));
 
-    ImageUtil.copyPixels(
-        inputDoubleImage,
+    zoomInputDoubleImage.setPixels(
         zoomOffsetX,
         zoomOffsetY,
-        zoomInputDoubleImage,
+        inputDoubleImage,
         0,
         0,
         ZOOM_WIDTH,
         ZOOM_HEIGHT,
-        ColorModel.RGB);
+        ColorModel.RGB,
+        new double[] { 0, 0, 0 }
+    );
+//    double[] samples = new double[3];
+//    for (int dy = 0; dy < height; dy++) {
+//      for (int dx = 0; dx < width; dx++) {
+//        if (source.isInside(sourceX + dx, sourceY + dy)) {
+//          source.getPixel(sourceX + dx, sourceY + dy, model, samples);
+//        } else {
+//          samples[0] = 0;
+//          samples[1] = 0;
+//          samples[2] = 0;
+//        }
+//        target.setPixel(targetX + dx, targetY + dy, model, samples);
+//      }
+//    }
 
-    gradientRemover.removeGradient(
+    removeGradient(
         zoomInputDoubleImage,
         zoomGradientDoubleImage,
-        zoomOutputDoubleImage,
-        zoomOffsetX,
-        zoomOffsetY);
+        zoomOutputDoubleImage);
 
     updateColorCurve();
     updateZoomHistogram();
@@ -687,12 +739,12 @@ public class AstrophotographyApp extends Application {
   }
 
   private void updateColorCurve() {
-    SampleSubtraction sampleSubtraction = sampleSubtractionStrategy.get().getSampleSubtraction();
+    ImageOperation subtractor = sampleSubtractionStrategy.get().getOperation();
 
-    drawColorCurve(colorCurveCanvas, sampleSubtractionStrategy.get().getSampleSubtraction(), gradientPixelColor.get());
+    drawColorCurve(colorCurveCanvas, subtractor, gradientPixelColor.get());
   }
 
-  private void drawColorCurve(Canvas canvas, SampleSubtraction sampleSubtraction, Color gradientColor) {
+  private void drawColorCurve(Canvas canvas, ImageOperation subtractor, Color gradientColor) {
     final GraphicsContext gc = canvas.getGraphicsContext2D();
 
     final double canvasWidth = canvas.getWidth();
@@ -701,6 +753,11 @@ public class AstrophotographyApp extends Application {
     final double inset = 2;
     final double chartWidth = canvasWidth - inset * 2;
     final double chartHeight = canvasHeight - inset * 2;
+
+    final DoubleImage input = new ArrayDoubleImage(1, 1, ColorModel.RGB);
+    final DoubleImage gradient = new ArrayDoubleImage(1, 1, ColorModel.RGB);
+    final DoubleImage output = new ArrayDoubleImage(1, 1, ColorModel.RGB);
+    final double[] color = new double[3];
 
     gc.setFill(Color.LIGHTGRAY);
     gc.fillRect(0, 0, canvasWidth, canvasHeight);
@@ -714,9 +771,21 @@ public class AstrophotographyApp extends Application {
     double lastCanvasYG = 0.0;
     double lastCanvasYB = 0.0;
     for (double x = 0.0; x <= 1.0; x+=xStep) {
-      double yR = sampleSubtraction.subtract(x, gradientColor.getRed());
-      double yG = sampleSubtraction.subtract(x, gradientColor.getGreen());
-      double yB = sampleSubtraction.subtract(x, gradientColor.getBlue());
+      color[ColorModel.RGB.R] = x;
+      color[ColorModel.RGB.G] = x;
+      color[ColorModel.RGB.B] = x;
+      input.setPixel(0, 0, ColorModel.RGB, color);
+
+      color[ColorModel.RGB.R] = gradientColor.getRed();
+      color[ColorModel.RGB.G] = gradientColor.getGreen();
+      color[ColorModel.RGB.B] = gradientColor.getBlue();
+      gradient.setPixel(0, 0, ColorModel.RGB, color);
+
+      subtractor.operation(input, gradient, output);
+      output.getPixel(0, 0, ColorModel.RGB, color);
+      double yR = color[ColorModel.RGB.R];
+      double yG = color[ColorModel.RGB.G];
+      double yB = color[ColorModel.RGB.B];
 
       double canvasX = x * chartHeight + inset;
       double canvasYR = canvasHeight - inset - yR * canvasHeight;
@@ -805,7 +874,6 @@ public class AstrophotographyApp extends Application {
 
     for (int y = 0; y < image1.getHeight(); y++) {
       for (int x = 0; x < image1.getWidth(); x++) {
-
         image1.getPixel(x, y, ColorModel.RGB, sample1);
         image2.getPixel(x, y, ColorModel.RGB, sample2);
         sampleSubtraction.subtract(sample1, sample2, output);
@@ -1005,8 +1073,8 @@ public class AstrophotographyApp extends Application {
 
         {
           algorithmGridPane.add(new Label("Sample Subtraction:"), 0, algorithmRowIndex);
-          ComboBox<SampleSubtractionStrategy> sampleSubtractionComboBox = new ComboBox<>(FXCollections
-              .observableArrayList(SampleSubtractionStrategy.values()));
+          ComboBox<SubtractionStrategy> sampleSubtractionComboBox = new ComboBox<>(FXCollections
+              .observableArrayList(SubtractionStrategy.values()));
           algorithmGridPane.add(sampleSubtractionComboBox, 1, algorithmRowIndex);
           Bindings.bindBidirectional(sampleSubtractionComboBox.valueProperty(), sampleSubtractionStrategy);
           algorithmRowIndex++;
@@ -1079,7 +1147,39 @@ public class AstrophotographyApp extends Application {
   }
 
   private void addFixPoint(int x, int y) {
-    double[] color = ImageUtil.averagePixel(inputDoubleImage, x, y, sampleRadius.get(), ColorModel.RGB, null);
+    int sampleRadius1 = sampleRadius.get();
+    //    if (color == null) {
+//      color = new double[3];
+//    }
+//
+//    int n = 0;
+//    double sample0 = 0;
+//    double sample1 = 0;
+//    double sample2 = 0;
+//    for (int sy = y-sampleRadius; sy <= y+sampleRadius; sy++) {
+//      for (int sx = x-sampleRadius; sx < x+sampleRadius; sx++) {
+//        if (image.isInside(sx, sy)) {
+//          image.getPixel(sx, sy, colorModel, color);
+//          sample0 += color[0];
+//          sample1 += color[1];
+//          sample2 += color[2];
+//          n++;
+//        }
+//      }
+//    }
+//
+//    color[0] = sample0 / n;
+//    color[1] = sample1 / n;
+//    color[2] = sample2 / n;
+//    return color;
+    double[] color = inputDoubleImage.averagePixel(
+        x - sampleRadius1,
+        y - sampleRadius1,
+        sampleRadius1 + sampleRadius1 + 1,
+        sampleRadius1 + sampleRadius1 + 1,
+        ColorModel.RGB,
+        null
+    );
     fixPoints.add(new FixPoint(x, y, new Color(color[0], color[1], color[2], 1.0)));
   }
 

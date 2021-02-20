@@ -4,7 +4,6 @@ import ch.obermuhlner.astro.gradient.Point;
 import ch.obermuhlner.astro.gradient.points.AllPointsFinder;
 import ch.obermuhlner.astro.gradient.points.PointsFinder;
 import ch.obermuhlner.astro.image.DoubleImage;
-import ch.obermuhlner.astro.image.ImageUtil;
 import ch.obermuhlner.astro.image.color.ColorModel;
 
 import java.util.ArrayList;
@@ -44,7 +43,37 @@ public class GradientInterpolationFilter implements Filter {
     List<double[]> fixColors = new ArrayList<>();
 
     for (Point fixPoint : fixPoints) {
-      fixColors.add(ImageUtil.averagePixel(image, fixPoint.x, fixPoint.y, sampleRadius, ColorModel.RGB, null));
+      //    if (color == null) {
+//      color = new double[3];
+//    }
+//
+//    int n = 0;
+//    double sample0 = 0;
+//    double sample1 = 0;
+//    double sample2 = 0;
+//    for (int sy = y-sampleRadius; sy <= y+sampleRadius; sy++) {
+//      for (int sx = x-sampleRadius; sx < x+sampleRadius; sx++) {
+//        if (image.isInside(sx, sy)) {
+//          image.getPixel(sx, sy, colorModel, color);
+//          sample0 += color[0];
+//          sample1 += color[1];
+//          sample2 += color[2];
+//          n++;
+//        }
+//      }
+//    }
+//
+//    color[0] = sample0 / n;
+//    color[1] = sample1 / n;
+//    color[2] = sample2 / n;
+//    return color;
+      fixColors.add(image.averagePixel(fixPoint.x - sampleRadius,
+          fixPoint.y - sampleRadius,
+          sampleRadius + sampleRadius + 1,
+          sampleRadius + sampleRadius + 1,
+          ColorModel.RGB,
+          null
+      ));
     }
 
     setFixPoints(fixPoints, fixColors);

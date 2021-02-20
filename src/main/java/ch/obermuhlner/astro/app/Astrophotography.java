@@ -191,7 +191,7 @@ public class Astrophotography {
 
   private static void runTest() throws IOException {
     var input = loadImage("images/Autosave001.tif");
-    var gradient = pseudoMedianFilter(input, 20);
+    var gradient = gaussianBlur(input, 20);
     saveImage(gradient, "images/TestGradient.png");
   }
 

@@ -22,7 +22,7 @@ public class GaussianBlurFilter implements Filter {
         new ArrayDoubleImage(width, height, model)
     );
 
-    ImageUtil.copyPixels(source, 0, 0, temp.source, 0, 0, width, height, model);
+    temp.source.setPixels(source, model, null);
 
     double[] boxSizes = boxSizesForGauss(radius, 3);
     for (double boxSize : boxSizes) {
@@ -31,7 +31,7 @@ public class GaussianBlurFilter implements Filter {
       temp.swap();
     }
 
-    ImageUtil.copyPixels(temp.source, 0, 0, target, 0, 0, width, height, model);
+    target.setPixels(temp.source, model, null);
     return target;
   }
 

@@ -52,7 +52,7 @@ public class ImageWriter {
           image.getHeight(),
           BufferedImage.TYPE_INT_RGB
       ));
-      ImageUtil.copyPixels(image, 0, 0, temp, 0, 0, image.getWidth(), image.getHeight(), ColorModel.RGB);
+      temp.setPixels(0, 0, image, 0, 0, image.getWidth(), image.getHeight(), ColorModel.RGB, null);
       image = temp;
     }
 

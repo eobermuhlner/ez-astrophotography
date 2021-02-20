@@ -93,11 +93,13 @@ public class AstrophotographyApp extends Application {
   private static final int ZOOM_WIDTH = 150;
   private static final int ZOOM_HEIGHT = 150;
 
-  private static final int HISTOGRAM_WIDTH = 200;
+  private static final int HISTOGRAM_WIDTH = 150;
   private static final int HISTOGRAM_HEIGHT = 50;
 
-  private static final int COLOR_CURVE_WIDTH = 200;
-  private static final int COLOR_CURVE_HEIGHT = 200;
+  private static final int COLOR_CURVE_WIDTH = 150;
+  private static final int COLOR_CURVE_HEIGHT = 150;
+
+  private static final int COLOR_INDICATOR_SIZE = 15;
 
   private static final int SPACING = 2;
 
@@ -235,12 +237,7 @@ public class AstrophotographyApp extends Application {
     }
 
     {
-      TabPane editorTabPane = new TabPane();
-      hbox.getChildren().add(editorTabPane);
-      editorTabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
-
-      Tab editorTab = new Tab("Editor", createEditor());
-      editorTabPane.getTabs().add(editorTab);
+      hbox.getChildren().add(createEditor());
     }
 
 
@@ -920,14 +917,14 @@ public class AstrophotographyApp extends Application {
 
     {
       GridPane mainGridPane = new GridPane();
+      mainGridPane.setHgap(SPACING);
+      mainGridPane.setVgap(SPACING);
       mainBox.getChildren().add(mainGridPane);
-      mainGridPane.setHgap(4);
-      mainGridPane.setVgap(4);
 
       int rowIndex = 0;
 
       {
-        HBox sampleHBox = new HBox(4);
+        HBox sampleHBox = new HBox(SPACING);
         mainGridPane.add(sampleHBox, 0, rowIndex, 4, 1);
 
         sampleHBox.getChildren().add(new Label("X:"));
@@ -948,120 +945,171 @@ public class AstrophotographyApp extends Application {
         sampleRadiusSpinner.getStyleClass().add(Spinner.STYLE_CLASS_SPLIT_ARROWS_HORIZONTAL);
         sampleRadiusSpinner.setPrefWidth(70);
         sampleRadius.bind(sampleRadiusSpinner.valueProperty());
-//        TextField sampleRadiusTextField = new TextField();
-//        sampleHBox.getChildren().add(sampleRadiusTextField);
-//        sampleRadiusTextField.setPrefWidth(60);
-//        Bindings.bindBidirectional(sampleRadiusTextField.textProperty(), sampleRadius, INTEGER_FORMAT);
 
+        /*
         sampleHBox.getChildren().add(new Label("Pixel:"));
-        Rectangle samplePixelRectangle = new Rectangle(15, 15);
+        Rectangle samplePixelRectangle = new Rectangle(COLOR_INDICATOR_SIZE, COLOR_INDICATOR_SIZE);
         sampleHBox.getChildren().add(samplePixelRectangle);
         samplePixelRectangle.fillProperty().bind(samplePixelColor);
 
         sampleHBox.getChildren().add(new Label("Avg:"));
-        Rectangle sampleAverageRectangle = new Rectangle(15, 15);
+        Rectangle sampleAverageRectangle = new Rectangle(COLOR_INDICATOR_SIZE, COLOR_INDICATOR_SIZE);
         sampleHBox.getChildren().add(sampleAverageRectangle);
         sampleAverageRectangle.fillProperty().bind(sampleAverageColor);
 
         sampleHBox.getChildren().add(new Label("Gradient:"));
-        Rectangle sampleGradientRectangle = new Rectangle(15, 15);
+        Rectangle sampleGradientRectangle = new Rectangle(COLOR_INDICATOR_SIZE, COLOR_INDICATOR_SIZE);
         sampleHBox.getChildren().add(sampleGradientRectangle);
         sampleGradientRectangle.fillProperty().bind(gradientPixelColor);
+        */
 
         rowIndex++;
       }
 
       {
-        HBox fixPointToolbar = new HBox(4);
-        mainGridPane.add(fixPointToolbar, 0, rowIndex, 4, 1);
+        {
+          mainGridPane.add(new Label("Zoom:"), 0, rowIndex);
+          mainGridPane.add(new Label("Output Preview:"), 1, rowIndex);
+          rowIndex++;
+          mainGridPane.add(withCrosshair(zoomInputImageView), 0, rowIndex);
+          mainGridPane.add(withCrosshair(zoomOutputImageView), 1, rowIndex);
+          rowIndex++;
+        }
 
-        Button addFixPointButton = new Button("Add");
-        fixPointToolbar.getChildren().add(addFixPointButton);
-        addFixPointButton.setOnAction(event -> {
-          int x = zoomCenterX.get();
-          int y = zoomCenterY.get();
-          addFixPoint(x, y);
-        });
+        {
+          mainGridPane.add(new Label("Gradient:"), 0, rowIndex);
 
-        Button clearFixPointButton = new Button("Clear");
-        fixPointToolbar.getChildren().add(clearFixPointButton);
-        clearFixPointButton.setOnAction(event -> {
-          fixPoints.clear();
-        });
-        rowIndex++;
+          HBox hbox = new HBox(SPACING);
+          mainGridPane.add(hbox, 1, rowIndex);
+          hbox.getChildren().add(new Label("Delta:"));
+
+          ComboBox<SampleChannel> zoomDeltaColorModelComboBox = new ComboBox<>(FXCollections
+              .observableArrayList(SampleChannel.values()));
+          hbox.getChildren().add(zoomDeltaColorModelComboBox);
+          Bindings.bindBidirectional(zoomDeltaColorModelComboBox.valueProperty(), zoomDeltaSampleChannel);
+
+          Spinner<Number> zoomDeltaSampleFactorSpinner = new Spinner<>(1.0, 50.0, 20.0);
+          hbox.getChildren().add(zoomDeltaSampleFactorSpinner);
+          zoomDeltaSampleFactorSpinner.getStyleClass().add(Spinner.STYLE_CLASS_SPLIT_ARROWS_HORIZONTAL);
+          zoomDeltaSampleFactorSpinner.setPrefWidth(70);
+          zoomDeltaSampleFactor.bind(zoomDeltaSampleFactorSpinner.valueProperty());
+          rowIndex++;
+
+          mainGridPane.add(withCrosshair(zoomGradientImageView), 0, rowIndex);
+          mainGridPane.add(withCrosshair(zoomDeltaImageView), 1, rowIndex);
+
+          rowIndex++;
+        }
       }
 
       {
-        TableView<FixPoint> fixPointTableView = new TableView<>(fixPoints);
-        mainGridPane.add(fixPointTableView, 0, rowIndex, 4, 1);
-        fixPointTableView.setPlaceholder(new Label("Add points to define the background gradient."));
-        fixPointTableView.setPrefHeight(150);
-        fixPointTableView.setRowFactory(new Callback<TableView<FixPoint>, TableRow<FixPoint>>() {
-          @Override
-          public TableRow<FixPoint> call(TableView<FixPoint> param) {
-            TableRow<FixPoint> tableRow = new TableRow<>();
-            MenuItem gotoMenuItem = new MenuItem("Go To");
-            gotoMenuItem.setOnAction(event -> {
-              setZoom(tableRow.getItem().x, tableRow.getItem().y);
-            });
-            MenuItem removeMenuItem = new MenuItem("Remove");
-            removeMenuItem.setOnAction(event -> {
-              fixPoints.remove(tableRow.getItem());
-            });
-            tableRow.setContextMenu(new ContextMenu(
-                gotoMenuItem,
-                removeMenuItem
-            ));
-            return tableRow;
+        TabPane gradientTabPane = new TabPane();
+        mainGridPane.add(gradientTabPane, 0, rowIndex, 4, 1);
+        gradientTabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+
+        GridPane gradientGridPane = new GridPane();
+        gradientGridPane.setHgap(SPACING);
+        gradientGridPane.setVgap(SPACING);
+        Tab gradientInterpolateTab = new Tab("Interpolate", gradientGridPane);
+        gradientTabPane.getTabs().add(gradientInterpolateTab);
+
+        int gradientRowIndex = 0;
+
+        {
+          HBox fixPointToolbar = new HBox(SPACING);
+          gradientGridPane.add(fixPointToolbar, 0, gradientRowIndex, 4, 1);
+
+          Button addFixPointButton = new Button("Add");
+          fixPointToolbar.getChildren().add(addFixPointButton);
+          addFixPointButton.setOnAction(event -> {
+            int x = zoomCenterX.get();
+            int y = zoomCenterY.get();
+            addFixPoint(x, y);
+          });
+
+          Button clearFixPointButton = new Button("Clear");
+          fixPointToolbar.getChildren().add(clearFixPointButton);
+          clearFixPointButton.setOnAction(event -> {
+            fixPoints.clear();
+          });
+
+          gradientRowIndex++;
+        }
+
+        {
+          TableView<FixPoint> fixPointTableView = new TableView<>(fixPoints);
+          gradientGridPane.add(fixPointTableView, 0, gradientRowIndex, 4, 1);
+          fixPointTableView.setPlaceholder(new Label("Add points to define the background gradient."));
+          fixPointTableView.setPrefHeight(100);
+          fixPointTableView.setRowFactory(new Callback<TableView<FixPoint>, TableRow<FixPoint>>() {
+            @Override
+            public TableRow<FixPoint> call(TableView<FixPoint> param) {
+              TableRow<FixPoint> tableRow = new TableRow<>();
+              MenuItem gotoMenuItem = new MenuItem("Go To");
+              gotoMenuItem.setOnAction(event -> {
+                setZoom(tableRow.getItem().x, tableRow.getItem().y);
+              });
+              MenuItem removeMenuItem = new MenuItem("Remove");
+              removeMenuItem.setOnAction(event -> {
+                fixPoints.remove(tableRow.getItem());
+              });
+              tableRow.setContextMenu(new ContextMenu(
+                  gotoMenuItem,
+                  removeMenuItem
+              ));
+              return tableRow;
+            }
+          });
+          addTableColumn(fixPointTableView, "X", 40, fixPoint -> {
+            return new ReadOnlyIntegerWrapper(fixPoint.x);
+          });
+          addTableColumn(fixPointTableView, "Y", 40, fixPoint -> {
+            return new ReadOnlyIntegerWrapper(fixPoint.y);
+          });
+          addTableColumn(fixPointTableView, "Color", 50, fixPoint -> {
+            Rectangle rectangle = new Rectangle(COLOR_INDICATOR_SIZE, COLOR_INDICATOR_SIZE);
+            rectangle.setFill(fixPoint.color);
+            return new ReadOnlyObjectWrapper<>(rectangle);
+          });
+          addTableColumn(fixPointTableView, "Red", 70, fixPoint -> {
+            return new ReadOnlyStringWrapper(PERCENT_FORMAT.format(fixPoint.color.getRed()));
+          });
+          addTableColumn(fixPointTableView, "Green", 70, fixPoint -> {
+            return new ReadOnlyStringWrapper(PERCENT_FORMAT.format(fixPoint.color.getGreen()));
+          });
+          addTableColumn(fixPointTableView, "Blue", 70, fixPoint -> {
+            return new ReadOnlyStringWrapper(PERCENT_FORMAT.format(fixPoint.color.getBlue()));
+          });
+          gradientRowIndex++;
+        }
+
+        {
+          {
+            gradientGridPane.add(new Label("Point Finder:"), 0, gradientRowIndex);
+            ComboBox<PointFinderStrategy> pointFinderComboBox = new ComboBox<>(FXCollections
+                .observableArrayList(PointFinderStrategy.values()));
+            gradientGridPane.add(pointFinderComboBox, 1, gradientRowIndex);
+            Bindings.bindBidirectional(pointFinderComboBox.valueProperty(), pointFinderStrategy);
+            gradientRowIndex++;
           }
-        });
-        addTableColumn(fixPointTableView, "X", 50, fixPoint -> {
-          return new ReadOnlyIntegerWrapper(fixPoint.x);
-        });
-        addTableColumn(fixPointTableView, "Y", 50, fixPoint -> {
-          return new ReadOnlyIntegerWrapper(fixPoint.y);
-        });
-        addTableColumn(fixPointTableView, "Color", 50, fixPoint -> {
-          Rectangle rectangle = new Rectangle(15, 15);
-          rectangle.setFill(fixPoint.color);
-          return new ReadOnlyObjectWrapper<>(rectangle);
-        });
-        addTableColumn(fixPointTableView, "Red", 80, fixPoint -> {
-          return new ReadOnlyStringWrapper(PERCENT_FORMAT.format(fixPoint.color.getRed()));
-        });
-        addTableColumn(fixPointTableView, "Green", 80, fixPoint -> {
-          return new ReadOnlyStringWrapper(PERCENT_FORMAT.format(fixPoint.color.getGreen()));
-        });
-        addTableColumn(fixPointTableView, "Blue", 80, fixPoint -> {
-          return new ReadOnlyStringWrapper(PERCENT_FORMAT.format(fixPoint.color.getBlue()));
-        });
-        rowIndex++;
+
+          {
+            gradientGridPane.add(new Label("Interpolation Power:"), 0, gradientRowIndex);
+            TextField interpolationPowerTextField = new TextField();
+            gradientGridPane.add(interpolationPowerTextField, 1, gradientRowIndex);
+            Bindings.bindBidirectional(interpolationPowerTextField.textProperty(), interpolationPower, DOUBLE_FORMAT);
+            gradientRowIndex++;
+          }
+        }
       }
 
       {
         GridPane algorithmGridPane = new GridPane();
-        mainGridPane.add(algorithmGridPane, rowIndex, 3, 1, 4);
-        algorithmGridPane.setHgap(4);
-        algorithmGridPane.setVgap(4);
+        algorithmGridPane.setHgap(SPACING);
+        algorithmGridPane.setVgap(SPACING);
+        mainBox.getChildren().add(algorithmGridPane);
 
         int algorithmRowIndex = 0;
-
-        {
-          algorithmGridPane.add(new Label("Point Finder:"), 0, algorithmRowIndex);
-          ComboBox<PointFinderStrategy> pointFinderComboBox = new ComboBox<>(FXCollections
-              .observableArrayList(PointFinderStrategy.values()));
-          algorithmGridPane.add(pointFinderComboBox, 1, algorithmRowIndex);
-          Bindings.bindBidirectional(pointFinderComboBox.valueProperty(), pointFinderStrategy);
-          algorithmRowIndex++;
-        }
-
-        {
-          algorithmGridPane.add(new Label("Interpolation Power:"), 0, algorithmRowIndex);
-          TextField interpolationPowerTextField = new TextField();
-          algorithmGridPane.add(interpolationPowerTextField, 1, algorithmRowIndex);
-          Bindings.bindBidirectional(interpolationPowerTextField.textProperty(), interpolationPower, DOUBLE_FORMAT);
-          algorithmRowIndex++;
-        }
 
         {
           algorithmGridPane.add(new Label("Removal:"), 0, algorithmRowIndex);
@@ -1101,40 +1149,6 @@ public class AstrophotographyApp extends Application {
           algorithmGridPane.add(zoomOutputHistogramCanvas, 1, algorithmRowIndex);
           algorithmRowIndex++;
         }
-      }
-
-      {
-        mainGridPane.add(new Label("Zoom:"), 0, rowIndex);
-        mainGridPane.add(new Label("Output Preview:"), 1, rowIndex);
-        rowIndex++;
-        mainGridPane.add(withCrosshair(zoomInputImageView), 0, rowIndex);
-        mainGridPane.add(withCrosshair(zoomOutputImageView), 1, rowIndex);
-        rowIndex++;
-      }
-
-      {
-        mainGridPane.add(new Label("Gradient:"), 0, rowIndex);
-
-        HBox hbox = new HBox(SPACING);
-        mainGridPane.add(hbox, 1, rowIndex);
-        hbox.getChildren().add(new Label("Delta:"));
-
-        ComboBox<SampleChannel> zoomDeltaColorModelComboBox = new ComboBox<>(FXCollections
-            .observableArrayList(SampleChannel.values()));
-        hbox.getChildren().add(zoomDeltaColorModelComboBox);
-        Bindings.bindBidirectional(zoomDeltaColorModelComboBox.valueProperty(), zoomDeltaSampleChannel);
-
-        Spinner<Number> zoomDeltaSampleFactorSpinner = new Spinner<>(1.0, 50.0, 20.0);
-        hbox.getChildren().add(zoomDeltaSampleFactorSpinner);
-        zoomDeltaSampleFactorSpinner.getStyleClass().add(Spinner.STYLE_CLASS_SPLIT_ARROWS_HORIZONTAL);
-        zoomDeltaSampleFactorSpinner.setPrefWidth(70);
-        zoomDeltaSampleFactor.bind(zoomDeltaSampleFactorSpinner.valueProperty());
-        rowIndex++;
-
-        mainGridPane.add(withCrosshair(zoomGradientImageView), 0, rowIndex);
-        mainGridPane.add(withCrosshair(zoomDeltaImageView), 1, rowIndex);
-
-        rowIndex++;
       }
     }
 

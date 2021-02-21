@@ -4,7 +4,6 @@ import ch.obermuhlner.astro.image.color.ColorModel;
 import ch.obermuhlner.astro.image.color.ColorUtil;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -14,37 +13,37 @@ public interface DoubleImage {
   int getWidth();
   int getHeight();
 
-  double[] getNativePixel(int x, int y, double[] samples);
-  void setNativePixel(int x, int y, double[] samples);
+  double[] getNativePixel(int x, int y, double[] color);
+  void setNativePixel(int x, int y, double[] color);
 
   default ColorModel getColorModel() {
     return ColorModel.RGB;
   };
 
-  default double[] getRGB(int x, int y, double[] samples) {
-    return getPixel(x, y, ColorModel.RGB, samples);
+  default double[] getRGB(int x, int y, double[] color) {
+    return getPixel(x, y, ColorModel.RGB, color);
   }
-  default void setRGB(int x, int y, double[] samples) {
-    setPixel(x, y, ColorModel.RGB, samples);
+  default void setRGB(int x, int y, double[] color) {
+    setPixel(x, y, ColorModel.RGB, color);
   }
 
-  default double[] getPixel(int x, int y, ColorModel colorModel, double[] samples) {
+  default double[] getPixel(int x, int y, ColorModel colorModel, double[] color) {
     int xx = Math.max(0, Math.min(getWidth() - 1, x));
     int yy = Math.max(0, Math.min(getHeight() - 1, y));
 
-    double[] result = getNativePixel(xx, yy, samples);
+    double[] result = getNativePixel(xx, yy, color);
     if (colorModel != getColorModel()) {
       ColorUtil.convert(result, getColorModel(), result, colorModel);
     }
     return result;
   }
 
-  default void setPixel(int x, int y, ColorModel colorModel, double[] samples) {
+  default void setPixel(int x, int y, ColorModel colorModel, double[] color) {
     if (isInside(x, y)) {
       if (colorModel != getColorModel()) {
-        samples = ColorUtil.convert(samples, colorModel, null, getColorModel());
+        color = ColorUtil.convert(color, colorModel, null, getColorModel());
       }
-      setNativePixel(x, y, samples);
+      setNativePixel(x, y, color);
     }
   }
 

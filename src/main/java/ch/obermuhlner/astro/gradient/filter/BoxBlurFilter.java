@@ -16,22 +16,22 @@ public class BoxBlurFilter extends AbstractFilter {
   }
 
   @Override
-  protected double[] filterPixel(DoubleImage source, int x, int y, ColorModel colorModel, double[] samples) {
+  protected double[] filterPixel(DoubleImage source, int x, int y, ColorModel colorModel, double[] color) {
     double sum0 = 0;
     double sum1 = 0;
     double sum2 = 0;
     for (int kx = x-radius; kx < x+radius; kx++) {
       for (int ky = y-radius; ky < y+radius; ky++) {
-        source.getPixel(kx, ky, model, samples);
-        sum0 += samples[0];
-        sum1 += samples[1];
-        sum2 += samples[2];
+        source.getPixel(kx, ky, model, color);
+        sum0 += color[0];
+        sum1 += color[1];
+        sum2 += color[2];
       }
     }
-    samples[0] = sum0 / kernelSize;
-    samples[1] = sum1 / kernelSize;
-    samples[2] = sum2 / kernelSize;
-    return samples;
+    color[0] = sum0 / kernelSize;
+    color[1] = sum1 / kernelSize;
+    color[2] = sum2 / kernelSize;
+    return color;
   }
 
 

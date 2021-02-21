@@ -36,25 +36,25 @@ public class ArrayDoubleImage implements DoubleImage {
   }
 
   @Override
-  public double[] getNativePixel(int x, int y, double[] samples) {
-    if (samples == null) {
-      samples = new double[3];
+  public double[] getNativePixel(int x, int y, double[] color) {
+    if (color == null) {
+      color = new double[3];
     }
 
     int index = (x + y * width) * SAMPLES_PER_PIXEL;
-    samples[0] = data[index + 0];
-    samples[1] = data[index + 1];
-    samples[2] = data[index + 2];
+    color[0] = data[index + 0];
+    color[1] = data[index + 1];
+    color[2] = data[index + 2];
 
-    return samples;
+    return color;
   }
 
   @Override
-  public void setNativePixel(int x, int y, double[] samples) {
+  public void setNativePixel(int x, int y, double[] color) {
     int index = (x + y * width) * SAMPLES_PER_PIXEL;
 
-    data[index + 0] = samples[0];
-    data[index + 1] = samples[1];
-    data[index + 2] = samples[2];
+    data[index + 0] = color[0];
+    data[index + 1] = color[1];
+    data[index + 2] = color[2];
   }
 }

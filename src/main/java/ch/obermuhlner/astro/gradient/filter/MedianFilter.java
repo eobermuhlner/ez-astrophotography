@@ -14,10 +14,10 @@ public class MedianFilter extends AbstractFilter {
   }
 
   @Override
-  protected double[] filterPixel(DoubleImage source, int x, int y, ColorModel colorModel, double[] samples) {
+  protected double[] filterPixel(DoubleImage source, int x, int y, ColorModel colorModel, double[] color) {
     int size = radius+radius+1;
-    source.medianPixel(x - radius, y - radius, size, size, colorModel, samples);
-    return samples;
+    source.medianPixel(x - radius, y - radius, size, size, colorModel, color);
+    return color;
   }
 
   @Override

@@ -19,14 +19,14 @@ public abstract class AbstractFilter implements Filter {
   public DoubleImage filter(DoubleImage source, DoubleImage target, int width, int height) {
     ColorModel colorModel = defaultColorModel == null ? target.getColorModel() : defaultColorModel;
 
-    double[] samples = new double[3];
+    double[] color = new double[3];
     for (int y = 0; y < height; y++) {
       for (int x = 0; x < width; x++) {
-        target.setPixel(x, y, colorModel, filterPixel(source, x, y, colorModel, samples));
+        target.setPixel(x, y, colorModel, filterPixel(source, x, y, colorModel, color));
       }
     }
     return target;
   }
 
-  protected abstract double[] filterPixel(DoubleImage source, int x, int y, ColorModel colorModel, double[] samples);
+  protected abstract double[] filterPixel(DoubleImage source, int x, int y, ColorModel colorModel, double[] color);
 }

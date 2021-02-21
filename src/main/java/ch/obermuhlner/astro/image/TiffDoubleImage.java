@@ -30,32 +30,32 @@ public class TiffDoubleImage implements DoubleImage {
   }
 
   @Override
-  public double[] getNativePixel(int x, int y, double[] samples) {
-    if (samples == null) {
-      samples = new double[3];
+  public double[] getNativePixel(int x, int y, double[] color) {
+    if (color == null) {
+      color = new double[3];
     }
 
     Number[] pixel = image.getPixel(x, y);
     if (pixel[0] instanceof Double) {
-      samples[ColorModel.RGB.R] = (double) pixel[0];
-      samples[ColorModel.RGB.G] = (double) pixel[1];
-      samples[ColorModel.RGB.B] = (double) pixel[2];
+      color[ColorModel.RGB.R] = (double) pixel[0];
+      color[ColorModel.RGB.G] = (double) pixel[1];
+      color[ColorModel.RGB.B] = (double) pixel[2];
     } else if (pixel[0] instanceof Float) {
-      samples[ColorModel.RGB.R] = (float) pixel[0];
-      samples[ColorModel.RGB.G] = (float) pixel[1];
-      samples[ColorModel.RGB.B] = (float) pixel[2];
+      color[ColorModel.RGB.R] = (float) pixel[0];
+      color[ColorModel.RGB.G] = (float) pixel[1];
+      color[ColorModel.RGB.B] = (float) pixel[2];
     } else {
-      samples[ColorModel.RGB.R] = pixel[0].doubleValue() / 256.0;
-      samples[ColorModel.RGB.G] = pixel[1].doubleValue() / 256.0;
-      samples[ColorModel.RGB.B] = pixel[2].doubleValue() / 256.0;
+      color[ColorModel.RGB.R] = pixel[0].doubleValue() / 256.0;
+      color[ColorModel.RGB.G] = pixel[1].doubleValue() / 256.0;
+      color[ColorModel.RGB.B] = pixel[2].doubleValue() / 256.0;
     }
 
-    return samples;
+    return color;
   }
 
   @Override
-  public void setNativePixel(int x, int y, double[] samples) {
-    image.setPixel(x, y, new Float[] { (float) samples[ColorModel.RGB.R], (float) samples[ColorModel.RGB.G], (float) samples[ColorModel.RGB.B] });
+  public void setNativePixel(int x, int y, double[] color) {
+    image.setPixel(x, y, new Float[] { (float) color[ColorModel.RGB.R], (float) color[ColorModel.RGB.G], (float) color[ColorModel.RGB.B] });
   }
 
 }

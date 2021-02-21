@@ -61,18 +61,18 @@ public class GaussianBlurFilter implements Filter {
 
   private void boxBlurHorizontal(DoubleImage source, DoubleImage target, int width, int height, int boxRadius) {
     int kernelSize = boxRadius + boxRadius + 1;
-    double[] samples = new double[3];
+    double[] color = new double[3];
 
     for (int y = 0; y < height; y++) {
-      source.getPixel(0, y, model, samples);
-      double first0 = samples[0];
-      double first1 = samples[1];
-      double first2 = samples[2];
+      source.getPixel(0, y, model, color);
+      double first0 = color[0];
+      double first1 = color[1];
+      double first2 = color[2];
 
-      source.getPixel(width - 1, y, model, samples);
-      double last0 = samples[0];
-      double last1 = samples[1];
-      double last2 = samples[2];
+      source.getPixel(width - 1, y, model, color);
+      double last0 = color[0];
+      double last1 = color[1];
+      double last2 = color[2];
 
       int leftX = 0;
       int rightX = boxRadius;
@@ -82,47 +82,47 @@ public class GaussianBlurFilter implements Filter {
       double sum1 = first1 * (boxRadius+1);
       double sum2 = first2 * (boxRadius+1);
       for (int x = 0; x < boxRadius; x++) {
-        source.getPixel(x, y, model, samples);
-        sum0 += samples[0];
-        sum1 += samples[1];
-        sum2 += samples[2];
+        source.getPixel(x, y, model, color);
+        sum0 += color[0];
+        sum1 += color[1];
+        sum2 += color[2];
       }
       for (int x = 0; x <= boxRadius; x++) {
-        source.getPixel(rightX++, y, model, samples);
-        sum0 += samples[0] - first0;
-        sum1 += samples[1] - first1;
-        sum2 += samples[2] - first2;
-        samples[0] = sum0 / kernelSize;
-        samples[1] = sum1 / kernelSize;
-        samples[2] = sum2 / kernelSize;
-        target.setPixel(targetX++, y, model, samples);
+        source.getPixel(rightX++, y, model, color);
+        sum0 += color[0] - first0;
+        sum1 += color[1] - first1;
+        sum2 += color[2] - first2;
+        color[0] = sum0 / kernelSize;
+        color[1] = sum1 / kernelSize;
+        color[2] = sum2 / kernelSize;
+        target.setPixel(targetX++, y, model, color);
       }
       for (int x = boxRadius + 1; x < width - boxRadius; x++) {
-        source.getPixel(rightX++, y, model, samples);
-        sum0 += samples[0];
-        sum1 += samples[1];
-        sum2 += samples[2];
-        source.getPixel(leftX++, y, model, samples);
-        sum0 -= samples[0];
-        sum1 -= samples[1];
-        sum2 -= samples[2];
-        samples[0] = sum0 / kernelSize;
-        samples[1] = sum1 / kernelSize;
-        samples[2] = sum2 / kernelSize;
-        target.setPixel(targetX++, y, model, samples);
+        source.getPixel(rightX++, y, model, color);
+        sum0 += color[0];
+        sum1 += color[1];
+        sum2 += color[2];
+        source.getPixel(leftX++, y, model, color);
+        sum0 -= color[0];
+        sum1 -= color[1];
+        sum2 -= color[2];
+        color[0] = sum0 / kernelSize;
+        color[1] = sum1 / kernelSize;
+        color[2] = sum2 / kernelSize;
+        target.setPixel(targetX++, y, model, color);
       }
       for (int x = width - boxRadius; x < width; x++) {
         sum0 += last0;
         sum1 += last1;
         sum2 += last2;
-        source.getPixel(leftX++, y, model, samples);
-        sum0 -= samples[0];
-        sum1 -= samples[1];
-        sum2 -= samples[2];
-        samples[0] = sum0 / kernelSize;
-        samples[1] = sum1 / kernelSize;
-        samples[2] = sum2 / kernelSize;
-        target.setPixel(targetX++, y, model, samples);
+        source.getPixel(leftX++, y, model, color);
+        sum0 -= color[0];
+        sum1 -= color[1];
+        sum2 -= color[2];
+        color[0] = sum0 / kernelSize;
+        color[1] = sum1 / kernelSize;
+        color[2] = sum2 / kernelSize;
+        target.setPixel(targetX++, y, model, color);
       }
     }
   }

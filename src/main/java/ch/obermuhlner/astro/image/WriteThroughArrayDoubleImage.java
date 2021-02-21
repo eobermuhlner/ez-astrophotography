@@ -24,13 +24,13 @@ public class WriteThroughArrayDoubleImage implements DoubleImage {
   }
 
   @Override
-  public double[] getNativePixel(int x, int y, double[] samples) {
-    return arrayImage.getNativePixel(x, y, samples);
+  public double[] getNativePixel(int x, int y, double[] color) {
+    return arrayImage.getNativePixel(x, y, color);
   }
 
   @Override
-  public void setNativePixel(int x, int y, double[] samples) {
-    arrayImage.setNativePixel(x, y, samples);
-    image.setNativePixel(x, y, samples);
+  public void setNativePixel(int x, int y, double[] color) {
+    arrayImage.setNativePixel(x, y, color);
+    image.setNativePixel(x, y, color);
   }
 }

@@ -291,6 +291,9 @@ public class AstrophotographyApp extends Application {
     singleGlowColorProperty.addListener((observable, oldValue, newValue) -> {
       updateZoom();
     });
+    blurRadiusProperty.addListener((observable, oldValue, newValue) -> {
+      updateZoom();
+    });
 //    removalFactor.addListener((observable, oldValue, newValue) -> {
 //      gradientInterpolationFilter.setRemovalFactor(removalFactor.get());
 //      updateZoom();
@@ -338,7 +341,7 @@ public class AstrophotographyApp extends Application {
     interpolationPowerProperty.set(3.0);
     blurRadiusProperty.set(100);
     removalFactorProperty.set(1.0);
-    sampleSubtractionStrategyProperty.set(SubtractionStrategy.Linear);
+    sampleSubtractionStrategyProperty.set(SubtractionStrategy.SubtractLinear);
   }
 
   void setSampleRadius(int value) {
@@ -953,7 +956,8 @@ public class AstrophotographyApp extends Application {
         sampleHBox.getChildren().add(new Label("Radius:"));
         sampleRadiusSpinner = new Spinner<>(0, 30, 5);
         sampleHBox.getChildren().add(sampleRadiusSpinner);
-        sampleRadiusSpinner.setTooltip(tooltip("Radius of the sample area used to calculate the color of gradient fix points."));
+        sampleRadiusSpinner.setTooltip(tooltip("Radius of the sample area used to calculate the color of gradient fix points.\n"
+            + "The width and height of the sample area will be: 2*radius + 1"));
         sampleRadiusSpinner.getStyleClass().add(Spinner.STYLE_CLASS_SPLIT_ARROWS_HORIZONTAL);
         sampleRadiusSpinner.setPrefWidth(70);
         sampleRadiusProperty.bind(sampleRadiusSpinner.valueProperty());
@@ -998,10 +1002,13 @@ public class AstrophotographyApp extends Application {
           ComboBox<SampleChannel> zoomDeltaColorModelComboBox = new ComboBox<>(FXCollections
               .observableArrayList(SampleChannel.values()));
           hbox.getChildren().add(zoomDeltaColorModelComboBox);
+          tooltip(zoomDeltaColorModelComboBox, "Color channel used to show the delta between the input image and glow image.\n"
+              + "The brightness delta is useful to determine how much color information is lost in the subtraction.");
           Bindings.bindBidirectional(zoomDeltaColorModelComboBox.valueProperty(), zoomDeltaSampleChannelProperty);
 
           Spinner<Number> zoomDeltaSampleFactorSpinner = new Spinner<>(1.0, 50.0, 20.0);
           hbox.getChildren().add(zoomDeltaSampleFactorSpinner);
+          tooltip(zoomDeltaSampleFactorSpinner, "Factor used to exaggerate the delta value.");
           zoomDeltaSampleFactorSpinner.getStyleClass().add(Spinner.STYLE_CLASS_SPLIT_ARROWS_HORIZONTAL);
           zoomDeltaSampleFactorSpinner.setPrefWidth(70);
           zoomDeltaSampleFactorProperty.bind(zoomDeltaSampleFactorSpinner.valueProperty());
@@ -1011,7 +1018,8 @@ public class AstrophotographyApp extends Application {
           mainGridPane.add(withCrosshair(zoomDeltaImageView), 1, rowIndex);
           tooltip(zoomDeltaImageView, "Shows the difference between the glow image and input image.\n"
               + "The channel to calculate the difference can be selected: Red, Green, Blue, Hue, Saturation, Brightness\n"
-              + "Blue colors indicate a positive, red a negative difference.");
+              + "Blue colors indicate a positive, red a negative difference."
+              + "If the delta channel is set to the 'Brightness', red colors indicate that the output image brightness will be < 0 and therefore information is lost.");
 
           rowIndex++;
         }
@@ -1032,6 +1040,8 @@ public class AstrophotographyApp extends Application {
           glowSingleColorGridPane.setVgap(SPACING);
           glowSingleColorTab = new Tab("Single Color", glowSingleColorGridPane);
           glowTabPane.getTabs().add(glowSingleColorTab);
+          glowSingleColorTab.setTooltip(tooltip("Determine a single color that will be used uniformly to estimate the glow.\n"
+              + "This is a good strategy if the glow is uniform over the entire image."));
 
           int glowSingleColorRowIndex = 0;
 
@@ -1200,6 +1210,8 @@ public class AstrophotographyApp extends Application {
           glowBlurGridPane.setVgap(SPACING);
           glowBlurTab = new Tab("Blur", glowBlurGridPane);
           glowTabPane.getTabs().add(glowBlurTab);
+          glowBlurTab.setTooltip(tooltip("Blurs the input image to calculate the glow image.\n"
+              + "This is a good strategy for images where the object of interest occupies only a small area."));
 
           int glowBlurRowIndex = 0;
 
@@ -1218,6 +1230,8 @@ public class AstrophotographyApp extends Application {
           glowInterpolateGridPane.setVgap(SPACING);
           glowGradientTab = new Tab("Gradient", glowInterpolateGridPane);
           glowTabPane.getTabs().add(glowGradientTab);
+          glowGradientTab.setTooltip(tooltip("Interpolates the glow between two or more points.\n"
+              + "This is a good strategy for images with a glow that shows a strong gradient."));
 
           int glowInterpolateRowIndex = 0;
 
@@ -1227,6 +1241,9 @@ public class AstrophotographyApp extends Application {
 
             Button addFixPointButton = new Button("Add");
             fixPointToolbar.getChildren().add(addFixPointButton);
+            tooltip(addFixPointButton, "Adds a new fix point to interpolate the glow.\n"
+                + "Make sure to set points in areas that only contain background glow and no nebula or stars.\n"
+                + "It is best to define an odd number of points - three points is usually a good number.");
             addFixPointButton.setOnAction(event -> {
               int x = zoomCenterXProperty.get();
               int y = zoomCenterYProperty.get();
@@ -1344,6 +1361,12 @@ public class AstrophotographyApp extends Application {
           ComboBox<SubtractionStrategy> sampleSubtractionComboBox = new ComboBox<>(FXCollections
               .observableArrayList(SubtractionStrategy.values()));
           subtractionGridPane.add(sampleSubtractionComboBox, 1, algorithmRowIndex);
+          tooltip(sampleSubtractionComboBox, "Different strategies to subtract the calculated glow from the input image.\n"
+              + "Subtract: Simply subtracts the RGB values of the glow.\n"
+              + "Subtract Linear: Subtracts the RGB values of the glow and corrects the remaining value linearly.\n"
+              + "Spline 1%: Uses a spline function to reduce the RGB value of the glow to 1%.\n"
+              + "Spline 1% + Stretch: Uses a spline function to reduce the RGB value of the glow to 1% - stretching the remaining value non-linearly.\n"
+              + "Spline 10%: Uses a spline function to reduce the RGB value of the glow to 10%.\n");
           Bindings.bindBidirectional(sampleSubtractionComboBox.valueProperty(), sampleSubtractionStrategyProperty);
           algorithmRowIndex++;
         }
@@ -1352,21 +1375,25 @@ public class AstrophotographyApp extends Application {
           subtractionGridPane.add(new Label("Curve:"), 0, algorithmRowIndex);
           colorCurveCanvas = new Canvas(COLOR_CURVE_WIDTH, COLOR_CURVE_HEIGHT);
           subtractionGridPane.add(colorCurveCanvas, 1, algorithmRowIndex);
+          tooltip(colorCurveCanvas, "Color curve shows how the RGB values for the current pixel from the input image (x-axis) to the output image (y-axis) are transformed.");
           algorithmRowIndex++;
 
           subtractionGridPane.add(new Label("Input:"), 0, algorithmRowIndex);
           inputHistogramCanvas = new Canvas(HISTOGRAM_WIDTH, HISTOGRAM_HEIGHT);
           subtractionGridPane.add(inputHistogramCanvas, 1, algorithmRowIndex);
+          tooltip(inputHistogramCanvas, "Histogram of the RGB values over the entire input image.");
           algorithmRowIndex++;
 
           subtractionGridPane.add(new Label("Zoom Input:"), 0, algorithmRowIndex);
           zoomInputHistogramCanvas = new Canvas(HISTOGRAM_WIDTH, HISTOGRAM_HEIGHT);
           subtractionGridPane.add(zoomInputHistogramCanvas, 1, algorithmRowIndex);
+          tooltip(zoomInputHistogramCanvas, "Histogram of the RGB values over the zoom input image.");
           algorithmRowIndex++;
 
           subtractionGridPane.add(new Label("Zoom Output:"), 0, algorithmRowIndex);
           zoomOutputHistogramCanvas = new Canvas(HISTOGRAM_WIDTH, HISTOGRAM_HEIGHT);
           subtractionGridPane.add(zoomOutputHistogramCanvas, 1, algorithmRowIndex);
+          tooltip(zoomOutputHistogramCanvas, "Histogram of the RGB values over the zoom output image.");
           algorithmRowIndex++;
         }
       }
@@ -1393,36 +1420,12 @@ public class AstrophotographyApp extends Application {
   }
 
   private void addFixPoint(int x, int y) {
-    int sampleRadius1 = sampleRadiusProperty.get();
-    //    if (color == null) {
-//      color = new double[3];
-//    }
-//
-//    int n = 0;
-//    double sample0 = 0;
-//    double sample1 = 0;
-//    double sample2 = 0;
-//    for (int sy = y-sampleRadius; sy <= y+sampleRadius; sy++) {
-//      for (int sx = x-sampleRadius; sx < x+sampleRadius; sx++) {
-//        if (image.isInside(sx, sy)) {
-//          image.getPixel(sx, sy, colorModel, color);
-//          sample0 += color[0];
-//          sample1 += color[1];
-//          sample2 += color[2];
-//          n++;
-//        }
-//      }
-//    }
-//
-//    color[0] = sample0 / n;
-//    color[1] = sample1 / n;
-//    color[2] = sample2 / n;
-//    return color;
+    int sampleRadius = sampleRadiusProperty.get();
     double[] color = inputDoubleImage.averagePixel(
-        x - sampleRadius1,
-        y - sampleRadius1,
-        sampleRadius1 + sampleRadius1 + 1,
-        sampleRadius1 + sampleRadius1 + 1,
+        x - sampleRadius,
+        y - sampleRadius,
+        sampleRadius + sampleRadius + 1,
+        sampleRadius + sampleRadius + 1,
         ColorModel.RGB,
         null
     );

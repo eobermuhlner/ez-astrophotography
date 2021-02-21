@@ -3,7 +3,6 @@ package ch.obermuhlner.astro.gradient.filter;
 import ch.obermuhlner.astro.image.ArrayDoubleImage;
 import ch.obermuhlner.astro.image.color.ColorModel;
 import ch.obermuhlner.astro.image.DoubleImage;
-import ch.obermuhlner.astro.image.ImageUtil;
 
 // http://blog.ivank.net/fastest-gaussian-blur.html
 public class GaussianBlurFilter implements Filter {

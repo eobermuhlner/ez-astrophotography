@@ -163,7 +163,7 @@ public class CommandParser {
     }
   }
 
-  public static interface CommandHandler {
+  public interface CommandHandler {
     void handle(NamedArguments commandArguments, OptionsWithArguments optionsWithArguments);
   }
 }

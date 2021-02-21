@@ -264,7 +264,7 @@ public enum FieldTagType {
 	 * @param array
 	 *            true if an array type
 	 */
-	private FieldTagType(int id, boolean array) {
+  FieldTagType(int id, boolean array) {
 		this.id = id;
 		this.array = array;
 	}

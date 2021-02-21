@@ -18,7 +18,7 @@ public interface DoubleImage {
 
   default ColorModel getColorModel() {
     return ColorModel.RGB;
-  };
+  }
 
   default double[] getRGB(int x, int y, double[] color) {
     return getPixel(x, y, ColorModel.RGB, color);
@@ -208,7 +208,7 @@ public interface DoubleImage {
     return color;
   }
 
-  default public DoubleImage copyImage() {
+  default DoubleImage copyImage() {
     ArrayDoubleImage copy = new ArrayDoubleImage(getWidth(), getHeight(), getColorModel());
     copy.setPixels(this, getColorModel(), null);
     return copy;

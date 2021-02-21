@@ -26,7 +26,7 @@ public class NearestPointsFinder implements PointsFinder {
   public List<Point> getRelevantFixPoints(Point point) {
     points.sort(Comparator.comparingDouble(p -> point.distanceSquare(p)));
 
-    List result = new ArrayList(n);
+    List<Point> result = new ArrayList<>(n);
     for (int i = 0; i < Math.min(n, points.size()); i++) {
       result.add(points.get(i));
     }

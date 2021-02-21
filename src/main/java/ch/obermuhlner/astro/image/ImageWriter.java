@@ -58,6 +58,5 @@ public class ImageWriter {
 
     AwtBufferedDoubleImage bufferedDoubleImage = ((AwtBufferedDoubleImage) image);
     ImageIO.write(bufferedDoubleImage.image, format.name(), output);
-    return;
   }
 }

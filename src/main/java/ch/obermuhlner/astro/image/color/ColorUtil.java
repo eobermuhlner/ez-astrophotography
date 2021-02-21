@@ -35,7 +35,7 @@ public class ColorUtil {
 
     v = cmax;
     if (cmax != 0)
-      s = (double) (cmax - cmin) / cmax;
+      s = (cmax - cmin) / cmax;
     else
       s = 0;
 

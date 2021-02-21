@@ -15,7 +15,7 @@ public interface CompressionEncoder {
 	 * 
 	 * @return true for row encoding
 	 */
-	public boolean rowEncoding();
+  boolean rowEncoding();
 
 	/**
 	 * Encode the bytes
@@ -26,6 +26,6 @@ public interface CompressionEncoder {
 	 *            byte order
 	 * @return encoded block of bytes
 	 */
-	public byte[] encode(byte[] bytes, ByteOrder byteOrder);
+  byte[] encode(byte[] bytes, ByteOrder byteOrder);
 
 }

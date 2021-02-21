@@ -45,7 +45,7 @@ public class ByteWriter {
 	public void close() {
 		try {
 			os.close();
-		} catch (IOException e) {
+		} catch (IOException ignored) {
 		}
 	}
 

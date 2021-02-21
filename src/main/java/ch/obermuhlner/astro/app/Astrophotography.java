@@ -34,11 +34,11 @@ import java.util.regex.Pattern;
 
 public class Astrophotography {
 
-  public static void mainTest(String[] args) throws IOException, ScriptException {
+  public static void mainTest(String[] args) throws IOException {
     runTest();
   }
 
-  public static void main(String[] args) throws IOException, ScriptException {
+  public static void main(String[] args) throws IOException {
     String outputFilePrefix = "output_";
     List<File> inputFiles = new ArrayList<>();
     List<File> outputFiles = new ArrayList<>();

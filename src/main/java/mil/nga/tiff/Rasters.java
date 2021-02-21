@@ -335,8 +335,8 @@ public class Rasters {
 		if (bitsPerSamples.length != sampleFormats.length) {
 			throw new TiffException(
 					"Equal number of bits per samples and sample formats expected. "
-							+ "Bits Per Samples: " + bitsPerSamples
-							+ ", Sample Formats: " + sampleFormats);
+							+ "Bits Per Samples: " + Arrays.toString(bitsPerSamples)
+							+ ", Sample Formats: " + Arrays.toString(sampleFormats));
 		}
 		FieldType[] result = new FieldType[bitsPerSamples.length];
 		for (int i = 0; i < bitsPerSamples.length; i++) {

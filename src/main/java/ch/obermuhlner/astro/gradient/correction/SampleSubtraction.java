@@ -3,7 +3,7 @@ package ch.obermuhlner.astro.gradient.correction;
 public interface SampleSubtraction {
   double subtract(double sample, double delta);
 
-  default double[] subtract(double[] sample, double[] delta, double result[]) {
+  default double[] subtract(double[] sample, double[] delta, double[] result) {
     if (result == null) {
       result = new double[3];
     }

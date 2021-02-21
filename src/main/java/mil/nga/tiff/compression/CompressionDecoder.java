@@ -18,6 +18,6 @@ public interface CompressionDecoder {
 	 *            byte order
 	 * @return decoded bytes
 	 */
-	public byte[] decode(byte[] bytes, ByteOrder byteOrder);
+  byte[] decode(byte[] bytes, ByteOrder byteOrder);
 
 }

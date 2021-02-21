@@ -85,7 +85,7 @@ public enum FieldType {
 	 * @param bytes
 	 *            bytes per value
 	 */
-	private FieldType(int bytes) {
+  FieldType(int bytes) {
 		this.bytes = bytes;
 	}
 

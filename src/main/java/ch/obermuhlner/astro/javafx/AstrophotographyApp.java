@@ -18,7 +18,6 @@ import ch.obermuhlner.astro.image.WriteThroughArrayDoubleImage;
 import ch.obermuhlner.astro.image.color.ColorModel;
 import ch.obermuhlner.astro.image.color.ColorUtil;
 import javafx.application.Application;
-import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.binding.IntegerBinding;
 import javafx.beans.property.DoubleProperty;
@@ -492,7 +491,7 @@ public class AstrophotographyApp extends Application {
   }
 
   private File loadProperties(File file) throws IOException {
-    File result = null;
+    File result;
 
     try (FileReader reader = new FileReader(file)) {
       Properties properties = new Properties();
@@ -850,9 +849,9 @@ public class AstrophotographyApp extends Application {
     drawHistogram(zoomOutputHistogramCanvas, zoomOutputHistogram);
   }
 
-  private static Color RED_SEMI = new Color(1.0, 0.0, 0.0, 0.8);
-  private static Color GREEN_SEMI = new Color(0.0, 1.0, 0.0, 0.8);
-  private static Color BLUE_SEMI = new Color(0.0, 0.0, 1.0, 0.8);
+  private static final Color RED_SEMI = new Color(1.0, 0.0, 0.0, 0.8);
+  private static final Color GREEN_SEMI = new Color(0.0, 1.0, 0.0, 0.8);
+  private static final Color BLUE_SEMI = new Color(0.0, 0.0, 1.0, 0.8);
   private void drawHistogram(Canvas histogramCanvas, Histogram histogram) {
     GraphicsContext gc = histogramCanvas.getGraphicsContext2D();
 

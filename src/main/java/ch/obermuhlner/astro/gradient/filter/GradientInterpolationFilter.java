@@ -150,9 +150,6 @@ public class GradientInterpolationFilter implements Filter {
 
         source.getPixel(x, y, ColorModel.RGB, sourceColor);
 
-        gradientColor[ColorModel.RGB.R] = gradientColor[ColorModel.RGB.R];
-        gradientColor[ColorModel.RGB.G] = gradientColor[ColorModel.RGB.G];
-        gradientColor[ColorModel.RGB.B] = gradientColor[ColorModel.RGB.B];
         if (adaptiveGradient) {
 //          HSVColor imageHSV = HSVColor.fromRGB(inputColor);
 //          HSVColor gradientHSV = HSVColor.fromRGB(gradientColor);

@@ -13,7 +13,7 @@ public enum PointFinderStrategy {
 
   private final PointsFinder pointsFinder;
 
-  private PointFinderStrategy(PointsFinder pointsFinder) {
+  PointFinderStrategy(PointsFinder pointsFinder) {
     this.pointsFinder = pointsFinder;
   }
 

@@ -29,6 +29,8 @@ import javafx.beans.property.ReadOnlyStringWrapper;
 import javafx.beans.property.SimpleDoubleProperty;
 import javafx.beans.property.SimpleIntegerProperty;
 import javafx.beans.property.SimpleObjectProperty;
+import javafx.beans.property.SimpleStringProperty;
+import javafx.beans.property.StringProperty;
 import javafx.beans.value.ObservableValue;
 import javafx.collections.FXCollections;
 import javafx.collections.ListChangeListener;
@@ -136,6 +138,8 @@ public class AstrophotographyApp extends Application {
   private final IntegerProperty blurRadiusProperty = new SimpleIntegerProperty();
 
   private final ObjectProperty<Color> singleGlowColorProperty = new SimpleObjectProperty<>(Color.BLACK);
+  private final StringProperty singleGlowColorDescriptionProperty = new SimpleStringProperty();
+
   private Color medianAllColor;
   private Color averageAllColor;
   private Color darkestAllColor;
@@ -492,9 +496,12 @@ public class AstrophotographyApp extends Application {
     try(PrintWriter writer = new PrintWriter(new FileWriter(file))) {
       Properties properties = new Properties();
 
-      properties.put("version", "0.0.1");
+      properties.put("version", "0.0.2");
       properties.put("input", String.valueOf(inputFile));
-      properties.put("glow.remover", "gradient");
+      properties.put("glow.remover", String.valueOf(glowStrategyProperty.get()));
+      properties.put("glow.remover.singleColor.color", String.valueOf(singleGlowColorProperty.get()));
+      properties.put("glow.remover.singleColor.colorDescription", String.valueOf(singleGlowColorDescriptionProperty.get()));
+      properties.put("glow.remover.blur.gaussianBlurRadius", String.valueOf(blurRadiusProperty.get()));
       for (int i = 0; i < fixPoints.size(); i++) {
         properties.put("glow.remover.gradient.fixpoint." + i + ".x", String.valueOf(fixPoints.get(i).x));
         properties.put("glow.remover.gradient.fixpoint." + i + ".y", String.valueOf(fixPoints.get(i).y));
@@ -524,24 +531,29 @@ public class AstrophotographyApp extends Application {
       loadImage(result);
       sampleSubtractionStrategyProperty.set(SubtractionStrategy.valueOf(properties.getProperty("glow.remover.sampleSubtractionStrategy")));
 
-      if ("gradient".equals(properties.getProperty("glow.remover"))) {
-        setSampleRadius(Integer.parseInt(properties.getProperty("glow.remover.gradient.sampleRadius")));
-        removalFactorProperty.set(Double.parseDouble(properties.getProperty("glow.remover.gradient.removalFactor")));
-        interpolationPowerProperty.set(Double.parseDouble(properties.getProperty("glow.remover.gradient.interpolationPower")));
+      glowStrategyProperty.set(GlowStrategy.valueOf(properties.getProperty("glow.remover")));
 
-        fixPoints.clear();
-        boolean fixPointLoading = true;
-        int fixPointIndex = 0;
-        while (fixPointLoading) {
-          String x = properties.getProperty("glow.remover.gradient.fixpoint." + fixPointIndex + ".x");
-          String y = properties.getProperty("glow.remover.gradient.fixpoint." + fixPointIndex + ".y");
-          if (x != null && y != null) {
-            addFixPoint(Integer.parseInt(x), Integer.parseInt(y));
-          } else {
-            fixPointLoading = false;
-          }
-          fixPointIndex++;
+      singleGlowColorProperty.set(Color.valueOf(properties.getProperty("glow.remover.singleColor.color")));
+      singleGlowColorDescriptionProperty.set(properties.getProperty("glow.remover.singleColor.colorDescription"));
+
+      blurRadiusProperty.set(Integer.parseInt(properties.getProperty("glow.remover.blur.gaussianBlurRadius")));
+
+      setSampleRadius(Integer.parseInt(properties.getProperty("glow.remover.gradient.sampleRadius")));
+      removalFactorProperty.set(Double.parseDouble(properties.getProperty("glow.remover.gradient.removalFactor")));
+      interpolationPowerProperty.set(Double.parseDouble(properties.getProperty("glow.remover.gradient.interpolationPower")));
+
+      fixPoints.clear();
+      boolean fixPointLoading = true;
+      int fixPointIndex = 0;
+      while (fixPointLoading) {
+        String x = properties.getProperty("glow.remover.gradient.fixpoint." + fixPointIndex + ".x");
+        String y = properties.getProperty("glow.remover.gradient.fixpoint." + fixPointIndex + ".y");
+        if (x != null && y != null) {
+          addFixPoint(Integer.parseInt(x), Integer.parseInt(y));
+        } else {
+          fixPointLoading = false;
         }
+        fixPointIndex++;
       }
     }
 
@@ -1058,6 +1070,7 @@ public class AstrophotographyApp extends Application {
                   medianAllColor = toJavafxColor(inputDoubleImage.medianPixel(ColorModel.RGB, null));
                 }
                 singleGlowColorProperty.set(medianAllColor);
+                singleGlowColorDescriptionProperty.set("Median All " + inputDoubleImage.getWidth() + "x" + inputDoubleImage.getHeight());
               });
             }
 
@@ -1070,6 +1083,7 @@ public class AstrophotographyApp extends Application {
                   averageAllColor = toJavafxColor(inputDoubleImage.averagePixel(ColorModel.RGB, null));
                 }
                 singleGlowColorProperty.set(averageAllColor);
+                singleGlowColorDescriptionProperty.set("Average All " + inputDoubleImage.getWidth() + "x" + inputDoubleImage.getHeight());
               });
             }
 
@@ -1082,6 +1096,7 @@ public class AstrophotographyApp extends Application {
                   darkestAllColor = toJavafxColor(inputDoubleImage.darkestPixel(ColorModel.RGB, null));
                 }
                 singleGlowColorProperty.set(darkestAllColor);
+                singleGlowColorDescriptionProperty.set("Darkest All " + inputDoubleImage.getWidth() + "x" + inputDoubleImage.getHeight());
               });
             }
 
@@ -1098,6 +1113,11 @@ public class AstrophotographyApp extends Application {
               tooltip(button, "Finds the median color of the pixels in the zoom input image.");
               button.setOnAction(event -> {
                 singleGlowColorProperty.set(toJavafxColor(zoomInputDoubleImage.medianPixel(ColorModel.RGB, null)));
+                int width = ZOOM_WIDTH;
+                int height = ZOOM_HEIGHT;
+                int x = zoomCenterXProperty.get() - width/2;
+                int y = zoomCenterYProperty.get() - height/2;
+                singleGlowColorDescriptionProperty.set("Median Zoom " + x + "," + y + " " + width + "x" + height);
               });
             }
 
@@ -1107,6 +1127,11 @@ public class AstrophotographyApp extends Application {
               tooltip(button, "Finds the average color of the pixels in the zoom input image.");
               button.setOnAction(event -> {
                 singleGlowColorProperty.set(toJavafxColor(zoomInputDoubleImage.averagePixel(ColorModel.RGB, null)));
+                int width = ZOOM_WIDTH;
+                int height = ZOOM_HEIGHT;
+                int x = zoomCenterXProperty.get() - width/2;
+                int y = zoomCenterYProperty.get() - height/2;
+                singleGlowColorDescriptionProperty.set("Average Zoom " + x + "," + y + " " + width + "x" + height);
               });
             }
 
@@ -1116,6 +1141,11 @@ public class AstrophotographyApp extends Application {
               tooltip(button, "Finds the darkest color of the pixels in the zoom input image.");
               button.setOnAction(event -> {
                 singleGlowColorProperty.set(toJavafxColor(zoomInputDoubleImage.darkestPixel(ColorModel.RGB, null)));
+                int width = ZOOM_WIDTH;
+                int height = ZOOM_HEIGHT;
+                int x = zoomCenterXProperty.get() - width/2;
+                int y = zoomCenterYProperty.get() - height/2;
+                singleGlowColorDescriptionProperty.set("Darkest Zoom " + x + "," + y + " " + width + "x" + height);
               });
             }
 
@@ -1131,10 +1161,15 @@ public class AstrophotographyApp extends Application {
               buttonBox.getChildren().add(button);
               tooltip(button, "Finds the median color of the pixels in the sample radius of the zoom input image.");
               button.setOnAction(event -> {
-                int x = ZOOM_WIDTH/2;
-                int y = ZOOM_HEIGHT/2;
+                int zx = ZOOM_WIDTH/2;
+                int zy = ZOOM_HEIGHT/2;
                 int r = sampleRadiusProperty.get();
-                singleGlowColorProperty.set(toJavafxColor(zoomInputDoubleImage.subImage(x-r, y-r, r+r+1, r+r+1).medianPixel(ColorModel.RGB, null)));
+                singleGlowColorProperty.set(toJavafxColor(zoomInputDoubleImage.subImage(zx-r, zy-r, r+r+1, r+r+1).medianPixel(ColorModel.RGB, null)));
+                int width = r+r+1;
+                int height = r+r+1;
+                int x = zoomCenterXProperty.get() - width/2;
+                int y = zoomCenterYProperty.get() - height/2;
+                singleGlowColorDescriptionProperty.set("Median Sample " + x + "," + y + " " + width + "x" + height);
               });
             }
 
@@ -1143,10 +1178,15 @@ public class AstrophotographyApp extends Application {
               buttonBox.getChildren().add(button);
               tooltip(button, "Finds the average color of the pixels in the sample radius of the zoom input image.");
               button.setOnAction(event -> {
-                int x = ZOOM_WIDTH/2;
-                int y = ZOOM_HEIGHT/2;
+                int zx = ZOOM_WIDTH/2;
+                int zy = ZOOM_HEIGHT/2;
                 int r = sampleRadiusProperty.get();
-                singleGlowColorProperty.set(toJavafxColor(zoomInputDoubleImage.subImage(x-r, y-r, r+r+1, r+r+1).averagePixel(ColorModel.RGB, null)));
+                singleGlowColorProperty.set(toJavafxColor(zoomInputDoubleImage.subImage(zx-r, zy-r, r+r+1, r+r+1).averagePixel(ColorModel.RGB, null)));
+                int width = r+r+1;
+                int height = r+r+1;
+                int x = zoomCenterXProperty.get() - width/2;
+                int y = zoomCenterYProperty.get() - height/2;
+                singleGlowColorDescriptionProperty.set("Average Sample " + x + "," + y + " " + width + "x" + height);
               });
             }
 
@@ -1155,10 +1195,15 @@ public class AstrophotographyApp extends Application {
               buttonBox.getChildren().add(button);
               tooltip(button, "Finds the darkest color of the pixels in the sample radius of the zoom input image.");
               button.setOnAction(event -> {
-                int x = ZOOM_WIDTH/2;
-                int y = ZOOM_HEIGHT/2;
+                int zx = ZOOM_WIDTH/2;
+                int zy = ZOOM_HEIGHT/2;
                 int r = sampleRadiusProperty.get();
-                singleGlowColorProperty.set(toJavafxColor(zoomInputDoubleImage.subImage(x-r, y-r, r+r+1, r+r+1).darkestPixel(ColorModel.RGB, null)));
+                singleGlowColorProperty.set(toJavafxColor(zoomInputDoubleImage.subImage(zx-r, zy-r, r+r+1, r+r+1).darkestPixel(ColorModel.RGB, null)));
+                int width = r+r+1;
+                int height = r+r+1;
+                int x = zoomCenterXProperty.get() - width/2;
+                int y = zoomCenterYProperty.get() - height/2;
+                singleGlowColorDescriptionProperty.set("Darkest Sample " + x + "," + y + " " + width + "x" + height);
               });
             }
 
@@ -1200,6 +1245,14 @@ public class AstrophotographyApp extends Application {
             singleGlowColorProperty.addListener((observable, oldValue, newValue) -> {
               glowBlueLabel.setText(PERCENT_FORMAT.format(newValue.getBlue()));
             });
+            glowSingleColorRowIndex++;
+          }
+
+          {
+            glowSingleColorGridPane.add(new Label("Color Description:"), 0, glowSingleColorRowIndex);
+            Label glowColorDescriptionLabel = new Label();
+            glowSingleColorGridPane.add(glowColorDescriptionLabel, 1, glowSingleColorRowIndex);
+            glowColorDescriptionLabel.textProperty().bind(singleGlowColorDescriptionProperty);
             glowSingleColorRowIndex++;
           }
         }
@@ -1334,6 +1387,19 @@ public class AstrophotographyApp extends Application {
             glowStrategyProperty.set(GlowStrategy.Blur);
           } else if (newValue == glowGradientTab) {
             glowStrategyProperty.set(GlowStrategy.Gradient);
+          }
+        });
+        glowStrategyProperty.addListener((observable, oldValue, newValue) -> {
+          switch(newValue) {
+            case SingleColor:
+              glowTabPane.getSelectionModel().select(glowSingleColorTab);
+              break;
+            case Blur:
+              glowTabPane.getSelectionModel().select(glowBlurTab);
+              break;
+            case Gradient:
+              glowTabPane.getSelectionModel().select(glowGradientTab);
+              break;
           }
         });
 

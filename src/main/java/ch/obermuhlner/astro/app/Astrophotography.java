@@ -28,6 +28,7 @@ import java.nio.file.Files;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.regex.Pattern;
 
@@ -44,6 +45,8 @@ public class Astrophotography {
 
     AtomicReference<Filter> gradientFilter = new AtomicReference<>(new GaussianBlurFilter(100, ColorModel.RGB));
     AtomicReference<ImageOperation> subtractOperation = new AtomicReference<>(new SubtractLinearImageOperation());
+    List<Point> gradientPoints = new ArrayList<>();
+    AtomicInteger sampleRadius = new AtomicInteger(3);
 
     CommandParser commandParser = new CommandParser();
 
@@ -72,17 +75,19 @@ public class Astrophotography {
     commandParser.add(
         new Command("gradient", 0,
             new Option("point", 1),
+            new Option("sampleradius", 1),
             new Option("interpolationpower", 1)
         ),
         (commandArguments, optionsWithArguments) -> {
           GradientInterpolationFilter gradientInterpolationFilter = new GradientInterpolationFilter();
-          List<Point> gradientPoints = new ArrayList<>();
-
           optionsWithArguments.handleOption("point", arguments -> {
             gradientPoints.add(toPoint(arguments.get(0)));
           });
           optionsWithArguments.handleOption("interpolationpower", arguments -> {
             gradientInterpolationFilter.setInterpolationPower(Double.parseDouble(arguments.get(0)));
+          });
+          optionsWithArguments.handleOption("sampleradius", arguments -> {
+            sampleRadius.set(Integer.parseInt(arguments.get(0)));
           });
 
           gradientFilter.set(gradientInterpolationFilter);
@@ -118,6 +123,11 @@ public class Astrophotography {
       System.out.println("Load " + inputFile);
 
       DoubleImage inputImage = ImageReader.read(inputFile, ImageQuality.High);
+
+      if (gradientFilter.get() instanceof GradientInterpolationFilter) {
+        GradientInterpolationFilter gradientInterpolationFilter = (GradientInterpolationFilter) gradientFilter.get();
+        gradientInterpolationFilter.setFixPoints(correctFixPoints(gradientPoints, inputImage), inputImage, sampleRadius.get());
+      }
 
       System.out.println("Create gradient " + gradientFilter.get());
       DoubleImage gradientImage = gradientFilter.get().filter(inputImage);

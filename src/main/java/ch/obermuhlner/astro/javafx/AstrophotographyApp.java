@@ -4,19 +4,21 @@ import ch.obermuhlner.astro.gradient.Point;
 import ch.obermuhlner.astro.gradient.analysis.Histogram;
 import ch.obermuhlner.astro.gradient.correction.SampleSubtraction;
 import ch.obermuhlner.astro.gradient.correction.SimpleSampleSubtraction;
+import ch.obermuhlner.astro.gradient.filter.GaussianBlurFilter;
 import ch.obermuhlner.astro.gradient.filter.GradientInterpolationFilter;
 import ch.obermuhlner.astro.gradient.operation.ImageOperation;
 import ch.obermuhlner.astro.gradient.operation.SubtractLinearImageOperation;
 import ch.obermuhlner.astro.image.ArrayDoubleImage;
-import ch.obermuhlner.astro.image.color.ColorModel;
-import ch.obermuhlner.astro.image.color.ColorUtil;
 import ch.obermuhlner.astro.image.DoubleImage;
 import ch.obermuhlner.astro.image.ImageCreator;
 import ch.obermuhlner.astro.image.ImageQuality;
 import ch.obermuhlner.astro.image.ImageReader;
 import ch.obermuhlner.astro.image.ImageWriter;
 import ch.obermuhlner.astro.image.WriteThroughArrayDoubleImage;
+import ch.obermuhlner.astro.image.color.ColorModel;
+import ch.obermuhlner.astro.image.color.ColorUtil;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.binding.IntegerBinding;
 import javafx.beans.property.DoubleProperty;
@@ -122,6 +124,8 @@ public class AstrophotographyApp extends Application {
   private final ObjectProperty<SampleChannel> zoomDeltaSampleChannel = new SimpleObjectProperty<>(SampleChannel.Brightness);
   private final DoubleProperty zoomDeltaSampleFactor = new SimpleDoubleProperty();
 
+  private final ObjectProperty<GlowStrategy> glowStrategy = new SimpleObjectProperty<>();
+
   private final IntegerProperty sampleRadius = new SimpleIntegerProperty();
   private final ObjectProperty<Color> samplePixelColor = new SimpleObjectProperty<>();
   private final ObjectProperty<Color> sampleAverageColor = new SimpleObjectProperty<>();
@@ -129,6 +133,14 @@ public class AstrophotographyApp extends Application {
 
   private final ObjectProperty<PointFinderStrategy> pointFinderStrategy = new SimpleObjectProperty<>();
   private final DoubleProperty interpolationPower = new SimpleDoubleProperty();
+
+  private final IntegerProperty blurRadius = new SimpleIntegerProperty();
+
+  private final ObjectProperty<Color> singleGlowColor = new SimpleObjectProperty<>(Color.BLACK);
+  private Color medianAllColor;
+  private Color averageAllColor;
+  private Color darkestAllColor;
+
   private final DoubleProperty removalFactor = new SimpleDoubleProperty();
   private final ObjectProperty<SubtractionStrategy> sampleSubtractionStrategy = new SimpleObjectProperty<>();
 
@@ -244,6 +256,9 @@ public class AstrophotographyApp extends Application {
     primaryStage.setScene(scene);
     primaryStage.show();
 
+    glowStrategy.addListener((observable, oldValue, newValue) -> {
+      updateZoom();
+    });
     fixPoints.addListener(new ListChangeListener<FixPoint>() {
       @Override
       public void onChanged(Change<? extends FixPoint> c) {
@@ -259,6 +274,9 @@ public class AstrophotographyApp extends Application {
     });
     interpolationPower.addListener((observable, oldValue, newValue) -> {
       gradientInterpolationFilter.setInterpolationPower(interpolationPower.get());
+      updateZoom();
+    });
+    singleGlowColor.addListener((observable, oldValue, newValue) -> {
       updateZoom();
     });
 //    removalFactor.addListener((observable, oldValue, newValue) -> {
@@ -287,7 +305,18 @@ public class AstrophotographyApp extends Application {
   }
 
   private void removeGradient(DoubleImage input, DoubleImage gradient, DoubleImage output) {
-    gradientInterpolationFilter.filter(input, gradient);
+    switch(glowStrategy.get()) {
+      case SingleColor:
+        gradient.setPixels(ColorModel.RGB, toDoubleColorRGB(singleGlowColor.get()));
+        break;
+      case Blur:
+        GaussianBlurFilter gaussianBlurFilter = new GaussianBlurFilter(blurRadius.get(), ColorModel.RGB);
+        gaussianBlurFilter.filter(input, gradient);
+        break;
+      case Gradient:
+        gradientInterpolationFilter.filter(input, gradient);
+        break;
+    }
     gradientSubtractor.operation(input, gradient, output);
   }
 
@@ -295,6 +324,7 @@ public class AstrophotographyApp extends Application {
     pointFinderStrategy.set(PointFinderStrategy.All);
     setSampleRadius(5);
     interpolationPower.set(3.0);
+    blurRadius.set(100);
     removalFactor.set(1.0);
     sampleSubtractionStrategy.set(SubtractionStrategy.Linear);
   }
@@ -537,6 +567,10 @@ public class AstrophotographyApp extends Application {
     deltaDoubleImage = new WriteThroughArrayDoubleImage(new JavaFXWritableDoubleImage(deltaImage), ColorModel.RGB);
     deltaImageView.setImage(deltaImage);
 
+    medianAllColor = null;
+    averageAllColor = null;
+    darkestAllColor = null;
+    // TODO consider background thread to fill the colors above
     fixPoints.clear();
     setZoom(width / 2, height / 2);
 
@@ -930,17 +964,17 @@ public class AstrophotographyApp extends Application {
         sampleHBox.getChildren().add(new Label("X:"));
         TextField zoomCenterXTextField = new TextField();
         sampleHBox.getChildren().add(zoomCenterXTextField);
-        zoomCenterXTextField.setPrefWidth(80);
+        zoomCenterXTextField.setPrefWidth(60);
         Bindings.bindBidirectional(zoomCenterXTextField.textProperty(), zoomCenterX, INTEGER_FORMAT);
 
         sampleHBox.getChildren().add(new Label("Y:"));
         TextField zoomCenterYTextField = new TextField();
         sampleHBox.getChildren().add(zoomCenterYTextField);
-        zoomCenterYTextField.setPrefWidth(80);
+        zoomCenterYTextField.setPrefWidth(60);
         Bindings.bindBidirectional(zoomCenterYTextField.textProperty(), zoomCenterY, INTEGER_FORMAT);
 
         sampleHBox.getChildren().add(new Label("Radius:"));
-        sampleRadiusSpinner = new Spinner<>(1, 30, 5);
+        sampleRadiusSpinner = new Spinner<>(0, 30, 5);
         sampleHBox.getChildren().add(sampleRadiusSpinner);
         sampleRadiusSpinner.getStyleClass().add(Spinner.STYLE_CLASS_SPLIT_ARROWS_HORIZONTAL);
         sampleRadiusSpinner.setPrefWidth(70);
@@ -1003,150 +1037,393 @@ public class AstrophotographyApp extends Application {
       }
 
       {
-        TabPane gradientTabPane = new TabPane();
-        mainGridPane.add(gradientTabPane, 0, rowIndex, 4, 1);
-        gradientTabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
+        TabPane glowTabPane = new TabPane();
+        mainGridPane.add(glowTabPane, 0, rowIndex, 4, 1);
+        glowTabPane.setTabClosingPolicy(TabPane.TabClosingPolicy.UNAVAILABLE);
 
-        GridPane gradientGridPane = new GridPane();
-        gradientGridPane.setHgap(SPACING);
-        gradientGridPane.setVgap(SPACING);
-        Tab gradientInterpolateTab = new Tab("Interpolate", gradientGridPane);
-        gradientTabPane.getTabs().add(gradientInterpolateTab);
-
-        int gradientRowIndex = 0;
+        Tab glowSingleColorTab;
+        Tab glowBlurTab;
+        Tab glowGradientTab;
 
         {
-          HBox fixPointToolbar = new HBox(SPACING);
-          gradientGridPane.add(fixPointToolbar, 0, gradientRowIndex, 4, 1);
+          GridPane glowSingleColorGridPane = new GridPane();
+          glowSingleColorGridPane.setHgap(SPACING);
+          glowSingleColorGridPane.setVgap(SPACING);
+          glowSingleColorTab = new Tab("Single Color", glowSingleColorGridPane);
+          glowTabPane.getTabs().add(glowSingleColorTab);
 
-          Button addFixPointButton = new Button("Add");
-          fixPointToolbar.getChildren().add(addFixPointButton);
-          addFixPointButton.setOnAction(event -> {
-            int x = zoomCenterX.get();
-            int y = zoomCenterY.get();
-            addFixPoint(x, y);
-          });
+          int glowSingleColorRowIndex = 0;
 
-          Button clearFixPointButton = new Button("Clear");
-          fixPointToolbar.getChildren().add(clearFixPointButton);
-          clearFixPointButton.setOnAction(event -> {
-            fixPoints.clear();
-          });
+          {
+            HBox buttonBox = new HBox(SPACING);
+            glowSingleColorGridPane.add(buttonBox, 0, glowSingleColorRowIndex, 2, 1);
 
-          gradientRowIndex++;
-        }
-
-        {
-          TableView<FixPoint> fixPointTableView = new TableView<>(fixPoints);
-          gradientGridPane.add(fixPointTableView, 0, gradientRowIndex, 4, 1);
-          fixPointTableView.setPlaceholder(new Label("Add points to define the background gradient."));
-          fixPointTableView.setPrefHeight(100);
-          fixPointTableView.setRowFactory(new Callback<TableView<FixPoint>, TableRow<FixPoint>>() {
-            @Override
-            public TableRow<FixPoint> call(TableView<FixPoint> param) {
-              TableRow<FixPoint> tableRow = new TableRow<>();
-              MenuItem gotoMenuItem = new MenuItem("Go To");
-              gotoMenuItem.setOnAction(event -> {
-                setZoom(tableRow.getItem().x, tableRow.getItem().y);
+            {
+              Button button = new Button("Median All");
+              buttonBox.getChildren().add(button);
+              button.setOnAction(event -> {
+                if (medianAllColor == null) {
+                  medianAllColor = toJavafxColor(inputDoubleImage.medianPixel(ColorModel.RGB, null));
+                }
+                singleGlowColor.set(medianAllColor);
               });
-              MenuItem removeMenuItem = new MenuItem("Remove");
-              removeMenuItem.setOnAction(event -> {
-                fixPoints.remove(tableRow.getItem());
-              });
-              tableRow.setContextMenu(new ContextMenu(
-                  gotoMenuItem,
-                  removeMenuItem
-              ));
-              return tableRow;
             }
-          });
-          addTableColumn(fixPointTableView, "X", 40, fixPoint -> {
-            return new ReadOnlyIntegerWrapper(fixPoint.x);
-          });
-          addTableColumn(fixPointTableView, "Y", 40, fixPoint -> {
-            return new ReadOnlyIntegerWrapper(fixPoint.y);
-          });
-          addTableColumn(fixPointTableView, "Color", 50, fixPoint -> {
-            Rectangle rectangle = new Rectangle(COLOR_INDICATOR_SIZE, COLOR_INDICATOR_SIZE);
-            rectangle.setFill(fixPoint.color);
-            return new ReadOnlyObjectWrapper<>(rectangle);
-          });
-          addTableColumn(fixPointTableView, "Red", 70, fixPoint -> {
-            return new ReadOnlyStringWrapper(PERCENT_FORMAT.format(fixPoint.color.getRed()));
-          });
-          addTableColumn(fixPointTableView, "Green", 70, fixPoint -> {
-            return new ReadOnlyStringWrapper(PERCENT_FORMAT.format(fixPoint.color.getGreen()));
-          });
-          addTableColumn(fixPointTableView, "Blue", 70, fixPoint -> {
-            return new ReadOnlyStringWrapper(PERCENT_FORMAT.format(fixPoint.color.getBlue()));
-          });
-          gradientRowIndex++;
+
+            {
+              Button button = new Button("Average All");
+              buttonBox.getChildren().add(button);
+              button.setOnAction(event -> {
+                if (averageAllColor == null) {
+                  averageAllColor = toJavafxColor(inputDoubleImage.averagePixel(ColorModel.RGB, null));
+                }
+                singleGlowColor.set(averageAllColor);
+              });
+            }
+
+            {
+              Button button = new Button("Darkest All");
+              buttonBox.getChildren().add(button);
+              button.setOnAction(event -> {
+                if (darkestAllColor == null) {
+                  darkestAllColor = toJavafxColor(inputDoubleImage.darkestPixel(ColorModel.RGB, null));
+                }
+                singleGlowColor.set(darkestAllColor);
+//                new Thread(() -> {
+//                  double[] color = inputDoubleImage.darkestPixel(ColorModel.RGB, null);
+//                  Platform.runLater(() -> {
+//                    singleGlowColor.set(toJavafxColor(color));
+//                  });
+//                }).start();
+              });
+            }
+
+            glowSingleColorRowIndex++;
+          }
+
+          {
+            HBox buttonBox = new HBox(SPACING);
+            glowSingleColorGridPane.add(buttonBox, 0, glowSingleColorRowIndex, 2, 1);
+
+            {
+              Button button = new Button("Median Zoom");
+              buttonBox.getChildren().add(button);
+              button.setOnAction(event -> {
+                singleGlowColor.set(toJavafxColor(zoomInputDoubleImage.medianPixel(ColorModel.RGB, null)));
+//                DoubleImage copyImage = zoomInputDoubleImage.copyImage();
+//                new Thread(() -> {
+//                  double[] color = copyImage.medianPixel(ColorModel.RGB, null);
+//                  Platform.runLater(() -> {
+//                    singleGlowColor.set(toJavafxColor(color));
+//                  });
+//                }).start();
+              });
+            }
+
+            {
+              Button button = new Button("Average Zoom");
+              buttonBox.getChildren().add(button);
+              button.setOnAction(event -> {
+                singleGlowColor.set(toJavafxColor(zoomInputDoubleImage.averagePixel(ColorModel.RGB, null)));
+//                DoubleImage copyImage = zoomInputDoubleImage.copyImage();
+//                new Thread(() -> {
+//                  double[] color = copyImage.averagePixel(ColorModel.RGB, null);
+//                  Platform.runLater(() -> {
+//                    singleGlowColor.set(toJavafxColor(color));
+//                  });
+//                }).start();
+              });
+            }
+
+            {
+              Button button = new Button("Darkest Zoom");
+              buttonBox.getChildren().add(button);
+              button.setOnAction(event -> {
+                singleGlowColor.set(toJavafxColor(zoomInputDoubleImage.darkestPixel(ColorModel.RGB, null)));
+//                DoubleImage copyImage = zoomInputDoubleImage.copyImage();
+//                new Thread(() -> {
+//                  double[] color = copyImage.darkestPixel(ColorModel.RGB, null);
+//                  Platform.runLater(() -> {
+//                    singleGlowColor.set(toJavafxColor(color));
+//                  });
+//                }).start();
+              });
+            }
+
+            glowSingleColorRowIndex++;
+          }
+
+          {
+            HBox buttonBox = new HBox(SPACING);
+            glowSingleColorGridPane.add(buttonBox, 0, glowSingleColorRowIndex, 2, 1);
+
+            {
+              Button button = new Button("Median Sample");
+              buttonBox.getChildren().add(button);
+              button.setOnAction(event -> {
+                int x = ZOOM_WIDTH/2;
+                int y = ZOOM_HEIGHT/2;
+                int r = sampleRadius.get();
+                singleGlowColor.set(toJavafxColor(zoomInputDoubleImage.subImage(x-r, y-r, r+r+1, r+r+1).medianPixel(ColorModel.RGB, null)));
+//                DoubleImage copyImage = zoomInputDoubleImage.subImage(x-r, y-r, r+r+1, r+r+1).copyImage();
+//                new Thread(() -> {
+//                  double[] color = copyImage.medianPixel(ColorModel.RGB, null);
+//                  Platform.runLater(() -> {
+//                    singleGlowColor.set(toJavafxColor(color));
+//                  });
+//                }).start();
+              });
+            }
+
+            {
+              Button button = new Button("Average Sample");
+              buttonBox.getChildren().add(button);
+              button.setOnAction(event -> {
+                int x = ZOOM_WIDTH/2;
+                int y = ZOOM_HEIGHT/2;
+                int r = sampleRadius.get();
+                singleGlowColor.set(toJavafxColor(zoomInputDoubleImage.subImage(x-r, y-r, r+r+1, r+r+1).averagePixel(ColorModel.RGB, null)));
+//                DoubleImage copyImage = zoomInputDoubleImage.subImage(x-r, y-r, r+r+1, r+r+1).copyImage();
+//                new Thread(() -> {
+//                  double[] color = copyImage.averagePixel(ColorModel.RGB, null);
+//                  Platform.runLater(() -> {
+//                    singleGlowColor.set(toJavafxColor(color));
+//                  });
+//                }).start();
+              });
+            }
+
+            {
+              Button button = new Button("Darkest Sample");
+              buttonBox.getChildren().add(button);
+              button.setOnAction(event -> {
+                int x = ZOOM_WIDTH/2;
+                int y = ZOOM_HEIGHT/2;
+                int r = sampleRadius.get();
+                singleGlowColor.set(toJavafxColor(zoomInputDoubleImage.subImage(x-r, y-r, r+r+1, r+r+1).darkestPixel(ColorModel.RGB, null)));
+//                DoubleImage copyImage = zoomInputDoubleImage.subImage(x-r, y-r, r+r+1, r+r+1).copyImage();
+//                new Thread(() -> {
+//                  double[] color = copyImage.darkestPixel(ColorModel.RGB, null);
+//                  Platform.runLater(() -> {
+//                    singleGlowColor.set(toJavafxColor(color));
+//                  });
+//                }).start();
+              });
+            }
+
+            glowSingleColorRowIndex++;
+          }
+
+          {
+            glowSingleColorGridPane.add(new Label("Glow Color:"), 0, glowSingleColorRowIndex);
+            Rectangle sampleAverageRectangle = new Rectangle(COLOR_INDICATOR_SIZE, COLOR_INDICATOR_SIZE);
+            glowSingleColorGridPane.add(sampleAverageRectangle, 1, glowSingleColorRowIndex);
+            sampleAverageRectangle.fillProperty().bind(singleGlowColor);
+            glowSingleColorRowIndex++;
+          }
+
+          {
+            glowSingleColorGridPane.add(new Label("Glow Red:"), 0, glowSingleColorRowIndex);
+            Label glowRedLabel = new Label();
+            glowSingleColorGridPane.add(glowRedLabel, 1, glowSingleColorRowIndex);
+            singleGlowColor.addListener((observable, oldValue, newValue) -> {
+              glowRedLabel.setText(PERCENT_FORMAT.format(newValue.getRed()));
+            });
+            glowSingleColorRowIndex++;
+          }
+
+          {
+            glowSingleColorGridPane.add(new Label("Glow Green:"), 0, glowSingleColorRowIndex);
+            Label glowGreenLabel = new Label();
+            glowSingleColorGridPane.add(glowGreenLabel, 1, glowSingleColorRowIndex);
+            singleGlowColor.addListener((observable, oldValue, newValue) -> {
+              glowGreenLabel.setText(PERCENT_FORMAT.format(newValue.getGreen()));
+            });
+            glowSingleColorRowIndex++;
+          }
+
+          {
+            glowSingleColorGridPane.add(new Label("Glow Blue:"), 0, glowSingleColorRowIndex);
+            Label glowBlueLabel = new Label();
+            glowSingleColorGridPane.add(glowBlueLabel, 1, glowSingleColorRowIndex);
+            singleGlowColor.addListener((observable, oldValue, newValue) -> {
+              glowBlueLabel.setText(PERCENT_FORMAT.format(newValue.getBlue()));
+            });
+            glowSingleColorRowIndex++;
+          }
         }
 
         {
+          GridPane glowBlurGridPane = new GridPane();
+          glowBlurGridPane.setHgap(SPACING);
+          glowBlurGridPane.setVgap(SPACING);
+          glowBlurTab = new Tab("Blur", glowBlurGridPane);
+          glowTabPane.getTabs().add(glowBlurTab);
+
+          int glowBlurRowIndex = 0;
+
           {
-            gradientGridPane.add(new Label("Point Finder:"), 0, gradientRowIndex);
-            ComboBox<PointFinderStrategy> pointFinderComboBox = new ComboBox<>(FXCollections
-                .observableArrayList(PointFinderStrategy.values()));
-            gradientGridPane.add(pointFinderComboBox, 1, gradientRowIndex);
-            Bindings.bindBidirectional(pointFinderComboBox.valueProperty(), pointFinderStrategy);
-            gradientRowIndex++;
+            glowBlurGridPane.add(new Label("Blur Radius:"), 0, glowBlurRowIndex);
+            TextField blurRadiusTextField = new TextField();
+            glowBlurGridPane.add(blurRadiusTextField, 1, glowBlurRowIndex);
+            Bindings.bindBidirectional(blurRadiusTextField.textProperty(), blurRadius, INTEGER_FORMAT);
+            glowBlurRowIndex++;
+          }
+        }
+
+        {
+          GridPane glowInterpolateGridPane = new GridPane();
+          glowInterpolateGridPane.setHgap(SPACING);
+          glowInterpolateGridPane.setVgap(SPACING);
+          glowGradientTab = new Tab("Gradient", glowInterpolateGridPane);
+          glowTabPane.getTabs().add(glowGradientTab);
+
+          int glowInterpolateRowIndex = 0;
+
+          {
+            HBox fixPointToolbar = new HBox(SPACING);
+            glowInterpolateGridPane.add(fixPointToolbar, 0, glowInterpolateRowIndex, 4, 1);
+
+            Button addFixPointButton = new Button("Add");
+            fixPointToolbar.getChildren().add(addFixPointButton);
+            addFixPointButton.setOnAction(event -> {
+              int x = zoomCenterX.get();
+              int y = zoomCenterY.get();
+              addFixPoint(x, y);
+            });
+
+            Button clearFixPointButton = new Button("Clear");
+            fixPointToolbar.getChildren().add(clearFixPointButton);
+            clearFixPointButton.setOnAction(event -> {
+              fixPoints.clear();
+            });
+
+            glowInterpolateRowIndex++;
           }
 
           {
-            gradientGridPane.add(new Label("Interpolation Power:"), 0, gradientRowIndex);
-            TextField interpolationPowerTextField = new TextField();
-            gradientGridPane.add(interpolationPowerTextField, 1, gradientRowIndex);
-            Bindings.bindBidirectional(interpolationPowerTextField.textProperty(), interpolationPower, DOUBLE_FORMAT);
-            gradientRowIndex++;
+            TableView<FixPoint> fixPointTableView = new TableView<>(fixPoints);
+            glowInterpolateGridPane.add(fixPointTableView, 0, glowInterpolateRowIndex, 4, 1);
+            fixPointTableView.setPlaceholder(new Label("Add points to define the background gradient."));
+            fixPointTableView.setPrefHeight(100);
+            fixPointTableView.setRowFactory(new Callback<TableView<FixPoint>, TableRow<FixPoint>>() {
+              @Override
+              public TableRow<FixPoint> call(TableView<FixPoint> param) {
+                TableRow<FixPoint> tableRow = new TableRow<>();
+                MenuItem gotoMenuItem = new MenuItem("Go To");
+                gotoMenuItem.setOnAction(event -> {
+                  setZoom(tableRow.getItem().x, tableRow.getItem().y);
+                });
+                MenuItem removeMenuItem = new MenuItem("Remove");
+                removeMenuItem.setOnAction(event -> {
+                  fixPoints.remove(tableRow.getItem());
+                });
+                tableRow.setContextMenu(new ContextMenu(
+                    gotoMenuItem,
+                    removeMenuItem
+                ));
+                return tableRow;
+              }
+            });
+            addTableColumn(fixPointTableView, "X", 40, fixPoint -> {
+              return new ReadOnlyIntegerWrapper(fixPoint.x);
+            });
+            addTableColumn(fixPointTableView, "Y", 40, fixPoint -> {
+              return new ReadOnlyIntegerWrapper(fixPoint.y);
+            });
+            addTableColumn(fixPointTableView, "Color", 50, fixPoint -> {
+              Rectangle rectangle = new Rectangle(COLOR_INDICATOR_SIZE, COLOR_INDICATOR_SIZE);
+              rectangle.setFill(fixPoint.color);
+              return new ReadOnlyObjectWrapper<>(rectangle);
+            });
+            addTableColumn(fixPointTableView, "Red", 70, fixPoint -> {
+              return new ReadOnlyStringWrapper(PERCENT_FORMAT.format(fixPoint.color.getRed()));
+            });
+            addTableColumn(fixPointTableView, "Green", 70, fixPoint -> {
+              return new ReadOnlyStringWrapper(PERCENT_FORMAT.format(fixPoint.color.getGreen()));
+            });
+            addTableColumn(fixPointTableView, "Blue", 70, fixPoint -> {
+              return new ReadOnlyStringWrapper(PERCENT_FORMAT.format(fixPoint.color.getBlue()));
+            });
+            glowInterpolateRowIndex++;
+          }
+
+          {
+            {
+              glowInterpolateGridPane.add(new Label("Point Finder:"), 0, glowInterpolateRowIndex);
+              ComboBox<PointFinderStrategy> pointFinderComboBox = new ComboBox<>(FXCollections
+                  .observableArrayList(PointFinderStrategy.values()));
+              glowInterpolateGridPane.add(pointFinderComboBox, 1, glowInterpolateRowIndex);
+              Bindings.bindBidirectional(pointFinderComboBox.valueProperty(), pointFinderStrategy);
+              glowInterpolateRowIndex++;
+            }
+
+            {
+              glowInterpolateGridPane.add(new Label("Interpolation Power:"), 0, glowInterpolateRowIndex);
+              TextField interpolationPowerTextField = new TextField();
+              glowInterpolateGridPane.add(interpolationPowerTextField, 1, glowInterpolateRowIndex);
+              Bindings.bindBidirectional(interpolationPowerTextField.textProperty(), interpolationPower, DOUBLE_FORMAT);
+              glowInterpolateRowIndex++;
+            }
           }
         }
+
+        glowTabPane.getSelectionModel().selectedItemProperty().addListener((observable, oldValue, newValue) -> {
+          if (newValue == glowSingleColorTab) {
+            glowStrategy.set(GlowStrategy.SingleColor);
+          } else if (newValue == glowBlurTab) {
+            glowStrategy.set(GlowStrategy.Blur);
+          } else if (newValue == glowGradientTab) {
+            glowStrategy.set(GlowStrategy.Gradient);
+          }
+        });
+
+        glowTabPane.getSelectionModel().select(glowGradientTab);
       }
 
       {
-        GridPane algorithmGridPane = new GridPane();
-        algorithmGridPane.setHgap(SPACING);
-        algorithmGridPane.setVgap(SPACING);
-        mainBox.getChildren().add(algorithmGridPane);
+        GridPane subtractionGridPane = new GridPane();
+        subtractionGridPane.setHgap(SPACING);
+        subtractionGridPane.setVgap(SPACING);
+        mainBox.getChildren().add(subtractionGridPane);
 
         int algorithmRowIndex = 0;
 
         {
-          algorithmGridPane.add(new Label("Removal:"), 0, algorithmRowIndex);
+          subtractionGridPane.add(new Label("Removal:"), 0, algorithmRowIndex);
           TextField removalFactorTextField = new TextField();
-          algorithmGridPane.add(removalFactorTextField, 1, algorithmRowIndex);
+          subtractionGridPane.add(removalFactorTextField, 1, algorithmRowIndex);
           Bindings.bindBidirectional(removalFactorTextField.textProperty(), removalFactor, PERCENT_FORMAT);
           algorithmRowIndex++;
         }
 
         {
-          algorithmGridPane.add(new Label("Sample Subtraction:"), 0, algorithmRowIndex);
+          subtractionGridPane.add(new Label("Sample Subtraction:"), 0, algorithmRowIndex);
           ComboBox<SubtractionStrategy> sampleSubtractionComboBox = new ComboBox<>(FXCollections
               .observableArrayList(SubtractionStrategy.values()));
-          algorithmGridPane.add(sampleSubtractionComboBox, 1, algorithmRowIndex);
+          subtractionGridPane.add(sampleSubtractionComboBox, 1, algorithmRowIndex);
           Bindings.bindBidirectional(sampleSubtractionComboBox.valueProperty(), sampleSubtractionStrategy);
           algorithmRowIndex++;
         }
 
         {
-          algorithmGridPane.add(new Label("Curve:"), 0, algorithmRowIndex);
+          subtractionGridPane.add(new Label("Curve:"), 0, algorithmRowIndex);
           colorCurveCanvas = new Canvas(COLOR_CURVE_WIDTH, COLOR_CURVE_HEIGHT);
-          algorithmGridPane.add(colorCurveCanvas, 1, algorithmRowIndex);
+          subtractionGridPane.add(colorCurveCanvas, 1, algorithmRowIndex);
           algorithmRowIndex++;
 
-          algorithmGridPane.add(new Label("Input:"), 0, algorithmRowIndex);
+          subtractionGridPane.add(new Label("Input:"), 0, algorithmRowIndex);
           inputHistogramCanvas = new Canvas(HISTOGRAM_WIDTH, HISTOGRAM_HEIGHT);
-          algorithmGridPane.add(inputHistogramCanvas, 1, algorithmRowIndex);
+          subtractionGridPane.add(inputHistogramCanvas, 1, algorithmRowIndex);
           algorithmRowIndex++;
 
-          algorithmGridPane.add(new Label("Zoom Input:"), 0, algorithmRowIndex);
+          subtractionGridPane.add(new Label("Zoom Input:"), 0, algorithmRowIndex);
           zoomInputHistogramCanvas = new Canvas(HISTOGRAM_WIDTH, HISTOGRAM_HEIGHT);
-          algorithmGridPane.add(zoomInputHistogramCanvas, 1, algorithmRowIndex);
+          subtractionGridPane.add(zoomInputHistogramCanvas, 1, algorithmRowIndex);
           algorithmRowIndex++;
 
-          algorithmGridPane.add(new Label("Zoom Output:"), 0, algorithmRowIndex);
+          subtractionGridPane.add(new Label("Zoom Output:"), 0, algorithmRowIndex);
           zoomOutputHistogramCanvas = new Canvas(HISTOGRAM_WIDTH, HISTOGRAM_HEIGHT);
-          algorithmGridPane.add(zoomOutputHistogramCanvas, 1, algorithmRowIndex);
+          subtractionGridPane.add(zoomOutputHistogramCanvas, 1, algorithmRowIndex);
           algorithmRowIndex++;
         }
       }
@@ -1158,6 +1435,18 @@ public class AstrophotographyApp extends Application {
     setupZoomDragEvents(zoomDeltaImageView);
 
     return mainBox;
+  }
+
+  private Color toJavafxColor(double[] color) {
+    return new Color(
+        color[ColorModel.RGB.R],
+        color[ColorModel.RGB.G],
+        color[ColorModel.RGB.B],
+        1.0);
+  }
+
+  private double[] toDoubleColorRGB(Color color) {
+    return new double[] { color.getRed(), color.getGreen(), color.getBlue() };
   }
 
   private void addFixPoint(int x, int y) {

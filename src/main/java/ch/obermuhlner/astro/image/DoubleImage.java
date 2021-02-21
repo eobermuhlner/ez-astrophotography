@@ -4,6 +4,7 @@ import ch.obermuhlner.astro.image.color.ColorModel;
 import ch.obermuhlner.astro.image.color.ColorUtil;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -33,7 +34,7 @@ public interface DoubleImage {
 
     double[] result = getNativePixel(xx, yy, samples);
     if (colorModel != getColorModel()) {
-      ColorUtil.convert(result, colorModel, result, getColorModel());
+      ColorUtil.convert(result, getColorModel(), result, colorModel);
     }
     return result;
   }
@@ -158,7 +159,59 @@ public interface DoubleImage {
       color[2] = data.get(nHalf)[ColorModel.HSV.V];
     }
 
-    return ColorUtil.convert(color, ColorModel.HSV, color, colorModel);
+    ColorUtil.convert(color, ColorModel.HSV, color, colorModel);
+    return color;
   }
 
+  default double[] darkestPixel(ColorModel colorModel, double[] color) {
+    if (color == null) {
+      color = new double[3];
+    }
+
+    double[] tempHSV = new double[3];
+    double bestV = 1.0;
+
+    for (int y = 0; y < getHeight(); y++) {
+      for (int x = 0; x < getWidth(); x++) {
+        if (isReallyInside(x, y)) {
+          getPixel(x, y, ColorModel.HSV, tempHSV);
+          double v = tempHSV[ColorModel.HSV.V];
+          if (v < bestV) {
+            bestV = v;
+            getPixel(x, y, colorModel, color);
+          }
+        }
+      }
+    }
+    return color;
+  }
+
+  default double[] brightestPixel(ColorModel colorModel, double[] color) {
+    if (color == null) {
+      color = new double[3];
+    }
+
+    double[] tempHSV = new double[3];
+    double bestV = 0.0;
+
+    for (int y = 0; y < getHeight(); y++) {
+      for (int x = 0; x < getWidth(); x++) {
+        if (isReallyInside(x, y)) {
+          getPixel(x, y, ColorModel.HSV, tempHSV);
+          double v = tempHSV[ColorModel.HSV.V];
+          if (v > bestV) {
+            bestV = v;
+            getPixel(x, y, colorModel, color);
+          }
+        }
+      }
+    }
+    return color;
+  }
+
+  default public DoubleImage copyImage() {
+    ArrayDoubleImage copy = new ArrayDoubleImage(getWidth(), getHeight(), getColorModel());
+    copy.setPixels(this, getColorModel(), null);
+    return copy;
+  }
 }

@@ -34,11 +34,11 @@ import java.util.regex.Pattern;
 
 public class Astrophotography {
 
-  public static void mainTest(String[] args) throws IOException {
+  public static void main(String[] args) throws IOException {
     runTest();
   }
 
-  public static void main(String[] args) throws IOException {
+  public static void mainTest(String[] args) throws IOException {
     String outputFilePrefix = "output_";
     List<File> inputFiles = new ArrayList<>();
     List<File> outputFiles = new ArrayList<>();
@@ -201,8 +201,11 @@ public class Astrophotography {
 
   private static void runTest() throws IOException {
     var input = loadImage("images/Autosave001.tif");
-    var gradient = gaussianBlur(input, 20);
+    var gradient = pseudoMedianFilter(input, 5);
+    gradient = gaussianBlur(input, 100);
     saveImage(gradient, "images/TestGradient.png");
+    var output = subtractLinear(input, gradient);
+    saveImage(output, "images/TestOutput.png");
   }
 
   private static void runScript() throws ScriptException {

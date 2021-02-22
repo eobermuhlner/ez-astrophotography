@@ -18,6 +18,7 @@ import ch.obermuhlner.astro.image.WriteThroughArrayDoubleImage;
 import ch.obermuhlner.astro.image.color.ColorModel;
 import ch.obermuhlner.astro.image.color.ColorUtil;
 import javafx.application.Application;
+import javafx.application.Platform;
 import javafx.beans.binding.Bindings;
 import javafx.beans.binding.IntegerBinding;
 import javafx.beans.property.DoubleProperty;
@@ -86,7 +87,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Properties;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 public class AstrophotographyApp extends Application {
 
@@ -139,10 +142,10 @@ public class AstrophotographyApp extends Application {
 
   private final ObjectProperty<Color> singleGlowColorProperty = new SimpleObjectProperty<>(Color.BLACK);
   private final StringProperty singleGlowColorDescriptionProperty = new SimpleStringProperty();
-
-  private Color medianAllColor;
-  private Color averageAllColor;
-  private Color darkestAllColor;
+  private final AtomicReference<Color> singleGlowColorUpdate = new AtomicReference<>();
+  private volatile Color medianAllColor;
+  private volatile Color averageAllColor;
+  private volatile Color darkestAllColor;
 
   private final DoubleProperty removalFactorProperty = new SimpleDoubleProperty();
   private final ObjectProperty<SubtractionStrategy> sampleSubtractionStrategyProperty = new SimpleObjectProperty<>();
@@ -1066,10 +1069,12 @@ public class AstrophotographyApp extends Application {
               buttonBox.getChildren().add(button);
               tooltip(button, "Finds the median color of all pixels in the input image.");
               button.setOnAction(event -> {
-                if (medianAllColor == null) {
-                  medianAllColor = toJavafxColor(inputDoubleImage.medianPixel(ColorModel.RGB, null));
-                }
-                singleGlowColorProperty.set(medianAllColor);
+                updateSingleGlowColor(() -> {
+                  if (medianAllColor == null) {
+                    medianAllColor = toJavafxColor(inputDoubleImage.medianPixel(ColorModel.RGB, null));
+                  }
+                  return medianAllColor;
+                });
                 singleGlowColorDescriptionProperty.set("Median All " + inputDoubleImage.getWidth() + "x" + inputDoubleImage.getHeight());
               });
             }
@@ -1079,10 +1084,12 @@ public class AstrophotographyApp extends Application {
               buttonBox.getChildren().add(button);
               tooltip(button, "Finds the average color of all pixels in the input image.");
               button.setOnAction(event -> {
-                if (averageAllColor == null) {
-                  averageAllColor = toJavafxColor(inputDoubleImage.averagePixel(ColorModel.RGB, null));
-                }
-                singleGlowColorProperty.set(averageAllColor);
+                updateSingleGlowColor(() -> {
+                  if (averageAllColor == null) {
+                    averageAllColor = toJavafxColor(inputDoubleImage.averagePixel(ColorModel.RGB, null));
+                  }
+                  return averageAllColor;
+                });
                 singleGlowColorDescriptionProperty.set("Average All " + inputDoubleImage.getWidth() + "x" + inputDoubleImage.getHeight());
               });
             }
@@ -1092,10 +1099,12 @@ public class AstrophotographyApp extends Application {
               buttonBox.getChildren().add(button);
               tooltip(button, "Finds the darkest color of all pixels in the input image.");
               button.setOnAction(event -> {
-                if (darkestAllColor == null) {
-                  darkestAllColor = toJavafxColor(inputDoubleImage.darkestPixel(ColorModel.RGB, null));
-                }
-                singleGlowColorProperty.set(darkestAllColor);
+                updateSingleGlowColor(() -> {
+                  if (darkestAllColor == null) {
+                    darkestAllColor = toJavafxColor(inputDoubleImage.darkestPixel(ColorModel.RGB, null));
+                  }
+                  return darkestAllColor;
+                });
                 singleGlowColorDescriptionProperty.set("Darkest All " + inputDoubleImage.getWidth() + "x" + inputDoubleImage.getHeight());
               });
             }
@@ -1112,7 +1121,9 @@ public class AstrophotographyApp extends Application {
               buttonBox.getChildren().add(button);
               tooltip(button, "Finds the median color of the pixels in the zoom input image.");
               button.setOnAction(event -> {
-                singleGlowColorProperty.set(toJavafxColor(zoomInputDoubleImage.medianPixel(ColorModel.RGB, null)));
+                updateSingleGlowColor(() -> {
+                  return toJavafxColor(zoomInputDoubleImage.medianPixel(ColorModel.RGB, null));
+                });
                 int width = ZOOM_WIDTH;
                 int height = ZOOM_HEIGHT;
                 int x = zoomCenterXProperty.get() - width/2;
@@ -1126,7 +1137,9 @@ public class AstrophotographyApp extends Application {
               buttonBox.getChildren().add(button);
               tooltip(button, "Finds the average color of the pixels in the zoom input image.");
               button.setOnAction(event -> {
-                singleGlowColorProperty.set(toJavafxColor(zoomInputDoubleImage.averagePixel(ColorModel.RGB, null)));
+                updateSingleGlowColor(() -> {
+                  return toJavafxColor(zoomInputDoubleImage.averagePixel(ColorModel.RGB, null));
+                });
                 int width = ZOOM_WIDTH;
                 int height = ZOOM_HEIGHT;
                 int x = zoomCenterXProperty.get() - width/2;
@@ -1140,7 +1153,9 @@ public class AstrophotographyApp extends Application {
               buttonBox.getChildren().add(button);
               tooltip(button, "Finds the darkest color of the pixels in the zoom input image.");
               button.setOnAction(event -> {
-                singleGlowColorProperty.set(toJavafxColor(zoomInputDoubleImage.darkestPixel(ColorModel.RGB, null)));
+                updateSingleGlowColor(() -> {
+                  return toJavafxColor(zoomInputDoubleImage.darkestPixel(ColorModel.RGB, null));
+                });
                 int width = ZOOM_WIDTH;
                 int height = ZOOM_HEIGHT;
                 int x = zoomCenterXProperty.get() - width/2;
@@ -1164,7 +1179,9 @@ public class AstrophotographyApp extends Application {
                 int zx = ZOOM_WIDTH/2;
                 int zy = ZOOM_HEIGHT/2;
                 int r = sampleRadiusProperty.get();
-                singleGlowColorProperty.set(toJavafxColor(zoomInputDoubleImage.subImage(zx-r, zy-r, r+r+1, r+r+1).medianPixel(ColorModel.RGB, null)));
+                updateSingleGlowColor(() -> {
+                  return toJavafxColor(zoomInputDoubleImage.subImage(zx-r, zy-r, r+r+1, r+r+1).medianPixel(ColorModel.RGB, null));
+                });
                 int width = r+r+1;
                 int height = r+r+1;
                 int x = zoomCenterXProperty.get() - width/2;
@@ -1181,7 +1198,9 @@ public class AstrophotographyApp extends Application {
                 int zx = ZOOM_WIDTH/2;
                 int zy = ZOOM_HEIGHT/2;
                 int r = sampleRadiusProperty.get();
-                singleGlowColorProperty.set(toJavafxColor(zoomInputDoubleImage.subImage(zx-r, zy-r, r+r+1, r+r+1).averagePixel(ColorModel.RGB, null)));
+                updateSingleGlowColor(() -> {
+                  return toJavafxColor(zoomInputDoubleImage.subImage(zx-r, zy-r, r+r+1, r+r+1).averagePixel(ColorModel.RGB, null));
+                });
                 int width = r+r+1;
                 int height = r+r+1;
                 int x = zoomCenterXProperty.get() - width/2;
@@ -1198,7 +1217,9 @@ public class AstrophotographyApp extends Application {
                 int zx = ZOOM_WIDTH/2;
                 int zy = ZOOM_HEIGHT/2;
                 int r = sampleRadiusProperty.get();
-                singleGlowColorProperty.set(toJavafxColor(zoomInputDoubleImage.subImage(zx-r, zy-r, r+r+1, r+r+1).darkestPixel(ColorModel.RGB, null)));
+                updateSingleGlowColor(() -> {
+                  return toJavafxColor(zoomInputDoubleImage.subImage(zx-r, zy-r, r+r+1, r+r+1).darkestPixel(ColorModel.RGB, null));
+                });
                 int width = r+r+1;
                 int height = r+r+1;
                 int x = zoomCenterXProperty.get() - width/2;
@@ -1483,6 +1504,15 @@ public class AstrophotographyApp extends Application {
 
   private double[] toDoubleColorRGB(Color color) {
     return new double[] { color.getRed(), color.getGreen(), color.getBlue() };
+  }
+
+  private void updateSingleGlowColor(Supplier<Color> producer) {
+    new Thread(() -> {
+      singleGlowColorUpdate.getAndSet(producer.get());
+      Platform.runLater(() -> {
+        singleGlowColorProperty.set(singleGlowColorUpdate.getAndSet(null));
+      });
+    }).start();
   }
 
   private void addFixPoint(int x, int y) {

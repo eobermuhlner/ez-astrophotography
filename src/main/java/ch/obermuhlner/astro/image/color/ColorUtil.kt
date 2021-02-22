@@ -14,7 +14,7 @@ object ColorUtil {
 
     @JvmOverloads
     fun convertRGBtoHSV(rgb: DoubleArray, hsv: DoubleArray, rgbOffset: Int = 0, hsvOffset: Int = 0): DoubleArray {
-        return convertRGBtoHSV(rgb!![rgbOffset + ColorModel.RGB.R], rgb[rgbOffset + ColorModel.RGB.G], rgb[rgbOffset + ColorModel.RGB.B], hsv, hsvOffset)
+        return convertRGBtoHSV(rgb[rgbOffset + ColorModel.RGB.R], rgb[rgbOffset + ColorModel.RGB.G], rgb[rgbOffset + ColorModel.RGB.B], hsv, hsvOffset)
     }
 
     @JvmOverloads

@@ -10,7 +10,7 @@ class WriteThroughArrayDoubleImage(private val image: DoubleImage, colorModel: C
     override val height: Int
         get() = arrayImage.height
 
-    override fun getNativePixel(x: Int, y: Int, color: DoubleArray?): DoubleArray {
+    override fun getNativePixel(x: Int, y: Int, color: DoubleArray): DoubleArray {
         return arrayImage.getNativePixel(x, y, color)
     }
 

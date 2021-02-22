@@ -105,15 +105,15 @@ object Astrophotography {
         val sampleHeight = image.height / 5
         val x1 = image.width / 2
         val y1 = sampleHeight / 2
-        val color1 = image.medianPixel(x1, y1, sampleWidth, sampleHeight, ColorModel.RGB, null)
+        val color1 = image.medianPixel(x1, y1, sampleWidth, sampleHeight)
         println("Auto median pixel1: " + Arrays.toString(color1))
         val x2 = sampleWidth / 2
         val y2 = image.height - sampleHeight / 2
-        val color2 = image.medianPixel(x2, y2, sampleWidth, sampleHeight, ColorModel.RGB, null)
+        val color2 = image.medianPixel(x2, y2, sampleWidth, sampleHeight)
         println("Auto median pixel2: " + Arrays.toString(color2))
         val x3 = image.width - sampleWidth / 2
         val y3 = image.height - sampleHeight / 2
-        val color3 = image.medianPixel(x3, y3, sampleWidth, sampleHeight, ColorModel.RGB, null)
+        val color3 = image.medianPixel(x3, y3, sampleWidth, sampleHeight)
         println("Auto median pixel3: " + Arrays.toString(color3))
         gradientInterpolationFilter.setFixPoints(
                 Arrays.asList(Point(x1, y1), Point(x2, y2), Point(x3, y3)),

@@ -5,11 +5,7 @@ import ch.obermuhlner.astro.image.color.ColorModel
 class ArrayDoubleImage(override val width: Int, override val height: Int, override val colorModel: ColorModel) : DoubleImage {
     private val data = DoubleArray(width * height * SAMPLES_PER_PIXEL)
 
-    override fun getNativePixel(x: Int, y: Int, color: DoubleArray?): DoubleArray {
-        var color = color
-        if (color == null) {
-            color = DoubleArray(3)
-        }
+    override fun getNativePixel(x: Int, y: Int, color: DoubleArray): DoubleArray {
         val index = (x + y * width) * SAMPLES_PER_PIXEL
         color[0] = data[index + 0]
         color[1] = data[index + 1]

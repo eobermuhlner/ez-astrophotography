@@ -10,11 +10,7 @@ class AwtBufferedDoubleImage(val image: BufferedImage) : DoubleImage {
     override val height: Int
         get() = image.height
 
-    override fun getNativePixel(x: Int, y: Int, color: DoubleArray?): DoubleArray {
-        var color = color
-        if (color == null) {
-            color = DoubleArray(3)
-        }
+    override fun getNativePixel(x: Int, y: Int, color: DoubleArray): DoubleArray {
         val rgb = image.getRGB(x, y)
         color[ColorModel.RGB.R] = (rgb shr 16 and 0xff) / 255.0
         color[ColorModel.RGB.G] = (rgb shr 8 and 0xff) / 255.0

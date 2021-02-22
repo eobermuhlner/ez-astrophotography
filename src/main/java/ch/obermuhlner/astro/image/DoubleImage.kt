@@ -10,10 +10,10 @@ interface DoubleImage {
     val colorModel: ColorModel
         get() = ColorModel.RGB
 
-    fun getNativePixel(x: Int, y: Int, color: DoubleArray?): DoubleArray
+    fun getNativePixel(x: Int, y: Int, color: DoubleArray = DoubleArray(3)): DoubleArray
     fun setNativePixel(x: Int, y: Int, color: DoubleArray)
 
-    fun getPixel(x: Int, y: Int, colorModel: ColorModel = ColorModel.RGB, color: DoubleArray? = null): DoubleArray {
+    fun getPixel(x: Int, y: Int, colorModel: ColorModel = ColorModel.RGB, color: DoubleArray = DoubleArray(3)): DoubleArray {
         val xx = Math.max(0, Math.min(width - 1, x))
         val yy = Math.max(0, Math.min(height - 1, y))
         val result = getNativePixel(xx, yy, color)
@@ -58,17 +58,17 @@ interface DoubleImage {
     }
 
     fun setPixels(source: DoubleImage, colorModel: ColorModel = ColorModel.RGB, outsideColor: DoubleArray? = null) {
-        val samples = DoubleArray(3)
+        val color = DoubleArray(3)
         for (y in 0 until height) {
             for (x in 0 until width) {
                 if (outsideColor == null || source.isInside(x, y)) {
-                    source.getPixel(x, y, colorModel, samples)
+                    source.getPixel(x, y, colorModel, color)
                 } else {
-                    samples[0] = outsideColor[0]
-                    samples[1] = outsideColor[1]
-                    samples[2] = outsideColor[2]
+                    color[0] = outsideColor[0]
+                    color[1] = outsideColor[1]
+                    color[2] = outsideColor[2]
                 }
-                setPixel(x, y, colorModel, samples)
+                setPixel(x, y, colorModel, color)
             }
         }
     }
@@ -85,15 +85,11 @@ interface DoubleImage {
         return SubDoubleImage(this, x, y, width, height)
     }
 
-    fun averagePixel(x: Int, y: Int, width: Int, height: Int, colorModel: ColorModel = ColorModel.RGB, color: DoubleArray? = null): DoubleArray {
+    fun averagePixel(x: Int, y: Int, width: Int, height: Int, colorModel: ColorModel = ColorModel.RGB, color: DoubleArray = DoubleArray(3)): DoubleArray {
         return subImage(x, y, width, height).averagePixel(colorModel, color)
     }
 
-    fun averagePixel(colorModel: ColorModel = ColorModel.RGB, color: DoubleArray? = null): DoubleArray {
-        var color = color
-        if (color == null) {
-            color = DoubleArray(3)
-        }
+    fun averagePixel(colorModel: ColorModel = ColorModel.RGB, color: DoubleArray = DoubleArray(3)): DoubleArray {
         var n = 0
         var sample0 = 0.0
         var sample1 = 0.0
@@ -115,48 +111,41 @@ interface DoubleImage {
         return color
     }
 
-    fun medianPixel(x: Int, y: Int, width: Int, height: Int, colorModel: ColorModel = ColorModel.RGB, color: DoubleArray? = null): DoubleArray {
+    fun medianPixel(x: Int, y: Int, width: Int, height: Int, colorModel: ColorModel = ColorModel.RGB, color: DoubleArray = DoubleArray(3)): DoubleArray {
         return subImage(x, y, width, height).medianPixel(colorModel, color)
     }
 
-    fun medianPixel(colorModel: ColorModel = ColorModel.RGB, color: DoubleArray? = null): DoubleArray {
-        var color = color
-        if (color == null) {
-            color = DoubleArray(3)
-        }
-        val data: MutableList<DoubleArray?> = ArrayList(width * height)
+    fun medianPixel(colorModel: ColorModel = ColorModel.RGB, color: DoubleArray = DoubleArray(3)): DoubleArray {
+        val data: MutableList<DoubleArray> = ArrayList(width * height)
         for (y in 0 until height) {
             for (x in 0 until width) {
                 if (isReallyInside(x, y)) {
-                    val sample = getPixel(x, y, ColorModel.HSV, null)
+                    val sample = getPixel(x, y, ColorModel.HSV)
                     data.add(sample)
                 }
             }
         }
-        Collections.sort(data, Comparator.comparingDouble { c: DoubleArray? -> c!![ColorModel.HSV.V] }
-                .thenComparing { c: DoubleArray? -> c!![ColorModel.HSV.S] }
-                .thenComparing { c: DoubleArray? -> c!![ColorModel.HSV.H] })
+        Collections.sort(data,
+                Comparator.comparingDouble { c: DoubleArray -> c[ColorModel.HSV.V] }
+                .thenComparing { c: DoubleArray -> c[ColorModel.HSV.S] }
+                .thenComparing { c: DoubleArray -> c[ColorModel.HSV.H] })
         val n = data.size
         val nHalf = n / 2
         val nHalfPlus1 = nHalf + 1
         if (n % 2 == 0) {
-            color[0] = (data[nHalf]!![ColorModel.HSV.H] + data[nHalfPlus1]!![ColorModel.HSV.H]) / 2
-            color[1] = (data[nHalf]!![ColorModel.HSV.S] + data[nHalfPlus1]!![ColorModel.HSV.S]) / 2
-            color[2] = (data[nHalf]!![ColorModel.HSV.V] + data[nHalfPlus1]!![ColorModel.HSV.V]) / 2
+            color[0] = (data[nHalf][ColorModel.HSV.H] + data[nHalfPlus1][ColorModel.HSV.H]) / 2
+            color[1] = (data[nHalf][ColorModel.HSV.S] + data[nHalfPlus1][ColorModel.HSV.S]) / 2
+            color[2] = (data[nHalf][ColorModel.HSV.V] + data[nHalfPlus1][ColorModel.HSV.V]) / 2
         } else {
-            color[0] = data[nHalf]!![ColorModel.HSV.H]
-            color[1] = data[nHalf]!![ColorModel.HSV.S]
-            color[2] = data[nHalf]!![ColorModel.HSV.V]
+            color[0] = data[nHalf][ColorModel.HSV.H]
+            color[1] = data[nHalf][ColorModel.HSV.S]
+            color[2] = data[nHalf][ColorModel.HSV.V]
         }
         ColorUtil.convert(color, ColorModel.HSV, color, colorModel)
         return color
     }
 
-    fun darkestPixel(colorModel: ColorModel = ColorModel.RGB, color: DoubleArray? = null): DoubleArray {
-        var color = color
-        if (color == null) {
-            color = DoubleArray(3)
-        }
+    fun darkestPixel(colorModel: ColorModel = ColorModel.RGB, color: DoubleArray = DoubleArray(3)): DoubleArray {
         val tempHSV = DoubleArray(3)
         var bestV = 1.0
         for (y in 0 until height) {
@@ -174,11 +163,7 @@ interface DoubleImage {
         return color
     }
 
-    fun brightestPixel(colorModel: ColorModel = ColorModel.RGB, color: DoubleArray? = null): DoubleArray {
-        var color = color
-        if (color == null) {
-            color = DoubleArray(3)
-        }
+    fun brightestPixel(colorModel: ColorModel = ColorModel.RGB, color: DoubleArray = DoubleArray(3)): DoubleArray {
         val tempHSV = DoubleArray(3)
         var bestV = 0.0
         for (y in 0 until height) {

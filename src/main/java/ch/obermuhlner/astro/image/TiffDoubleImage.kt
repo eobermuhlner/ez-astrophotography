@@ -5,17 +5,13 @@ import mil.nga.tiff.Rasters
 import mil.nga.tiff.TIFFImage
 
 class TiffDoubleImage(val tiffImage: TIFFImage, read: Boolean) : DoubleImage {
-    val image: Rasters = if (read) tiffImage.fileDirectories[0].readRasters() else tiffImage.fileDirectories[0].writeRasters;
+    val image: Rasters = if (read) tiffImage.fileDirectories[0].readRasters() else tiffImage.fileDirectories[0].writeRasters
     override val width: Int
         get() = image.getWidth()
     override val height: Int
         get() = image.getHeight()
 
-    override fun getNativePixel(x: Int, y: Int, color: DoubleArray?): DoubleArray {
-        var color = color
-        if (color == null) {
-            color = DoubleArray(3)
-        }
+    override fun getNativePixel(x: Int, y: Int, color: DoubleArray): DoubleArray {
         val pixel: Array<Number> = image.getPixel(x, y)
         if (pixel[0] is Double) {
             color[ColorModel.RGB.R] = pixel[0] as Double

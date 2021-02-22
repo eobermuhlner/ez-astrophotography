@@ -12,7 +12,7 @@ class SubDoubleImage(private val image: DoubleImage, private val offsetX: Int, p
         return isInside(x, y) && image.isInside(x + offsetX, y + offsetY)
     }
 
-    override fun getNativePixel(x: Int, y: Int, color: DoubleArray?): DoubleArray {
+    override fun getNativePixel(x: Int, y: Int, color: DoubleArray): DoubleArray {
         val xx = max(0, min(image.width - 1, x + offsetX))
         val yy = max(0, min(image.height - 1, y + offsetY))
         return image.getNativePixel(xx, yy, color)

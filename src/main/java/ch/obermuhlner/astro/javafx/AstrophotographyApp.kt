@@ -336,7 +336,7 @@ class AstrophotographyApp : Application() {
         val inputImage = inputDoubleImage
         //DoubleImage inputImage = ImageReader.read(inputFile, ImageQuality.High);
         val outputImage = createOutputImage(inputImage!!)
-        removeGradient(inputImage!!, gradientDoubleImage!!, outputImage!!)
+        removeGradient(inputImage, gradientDoubleImage!!, outputImage!!)
         ImageWriter.write(outputImage, outputFile)
         saveProperties(toPropertiesFile(outputFile))
     }
@@ -690,7 +690,7 @@ class AstrophotographyApp : Application() {
                     rgb[ColorModel.RGB.G] = Math.min(1.0, delta * sampleFactor * 0.5)
                     rgb[ColorModel.RGB.B] = Math.min(1.0, delta * sampleFactor)
                 }
-                deltaImage!!.setPixel(x, y, ColorModel.RGB, rgb)
+                deltaImage.setPixel(x, y, ColorModel.RGB, rgb)
             }
         }
     }
@@ -821,7 +821,7 @@ class AstrophotographyApp : Application() {
                             button.onAction = EventHandler { event: ActionEvent? ->
                                 updateSingleGlowColor({
                                     if (medianAllColor == null) {
-                                        medianAllColor = toJavafxColor(inputDoubleImage!!.medianPixel(ColorModel.RGB, null))
+                                        medianAllColor = toJavafxColor(inputDoubleImage!!.medianPixel(ColorModel.RGB))
                                     }
                                     medianAllColor!!
                                 })
@@ -835,7 +835,7 @@ class AstrophotographyApp : Application() {
                             button.setOnAction(javafx.event.EventHandler<javafx.event.ActionEvent?> { event: javafx.event.ActionEvent? ->
                                 updateSingleGlowColor(Supplier<javafx.scene.paint.Color> {
                                     if (averageAllColor == null) {
-                                        averageAllColor = toJavafxColor(inputDoubleImage!!.averagePixel(ch.obermuhlner.astro.image.color.ColorModel.RGB, null))
+                                        averageAllColor = toJavafxColor(inputDoubleImage!!.averagePixel(ch.obermuhlner.astro.image.color.ColorModel.RGB))
                                     }
                                     averageAllColor
                                 })
@@ -849,7 +849,7 @@ class AstrophotographyApp : Application() {
                             button.setOnAction(javafx.event.EventHandler<javafx.event.ActionEvent?> { event: javafx.event.ActionEvent? ->
                                 updateSingleGlowColor(Supplier<javafx.scene.paint.Color> {
                                     if (darkestAllColor == null) {
-                                        darkestAllColor = toJavafxColor(inputDoubleImage!!.darkestPixel(ch.obermuhlner.astro.image.color.ColorModel.RGB, null))
+                                        darkestAllColor = toJavafxColor(inputDoubleImage!!.darkestPixel())
                                     }
                                     darkestAllColor!!
                                 })
@@ -866,7 +866,7 @@ class AstrophotographyApp : Application() {
                             buttonBox.children.add(button)
                             tooltip(button, "Finds the median color of the pixels in the zoom input image.")
                             button.onAction = EventHandler { event: ActionEvent? ->
-                                updateSingleGlowColor({ toJavafxColor(zoomInputDoubleImage!!.medianPixel(ColorModel.RGB, null)) })
+                                updateSingleGlowColor({ toJavafxColor(zoomInputDoubleImage!!.medianPixel()) })
                                 val width = ZOOM_WIDTH
                                 val height = ZOOM_HEIGHT
                                 val x = zoomCenterXProperty.get() - width / 2
@@ -879,7 +879,7 @@ class AstrophotographyApp : Application() {
                             buttonBox.getChildren().add(button)
                             tooltip(button, "Finds the average color of the pixels in the zoom input image.")
                             button.setOnAction(javafx.event.EventHandler<javafx.event.ActionEvent?> { event: javafx.event.ActionEvent? ->
-                                updateSingleGlowColor(Supplier<javafx.scene.paint.Color> { toJavafxColor(zoomInputDoubleImage!!.averagePixel(ch.obermuhlner.astro.image.color.ColorModel.RGB, null)) })
+                                updateSingleGlowColor(Supplier<javafx.scene.paint.Color> { toJavafxColor(zoomInputDoubleImage!!.averagePixel()) })
                                 val width: Int = AstrophotographyApp.Companion.ZOOM_WIDTH
                                 val height: Int = AstrophotographyApp.Companion.ZOOM_HEIGHT
                                 val x: Int = zoomCenterXProperty.get() - width / 2
@@ -892,7 +892,7 @@ class AstrophotographyApp : Application() {
                             buttonBox.getChildren().add(button)
                             tooltip(button, "Finds the darkest color of the pixels in the zoom input image.")
                             button.setOnAction(javafx.event.EventHandler<javafx.event.ActionEvent?> { event: javafx.event.ActionEvent? ->
-                                updateSingleGlowColor(Supplier<javafx.scene.paint.Color> { toJavafxColor(zoomInputDoubleImage!!.darkestPixel(ch.obermuhlner.astro.image.color.ColorModel.RGB, null)) })
+                                updateSingleGlowColor(Supplier<javafx.scene.paint.Color> { toJavafxColor(zoomInputDoubleImage!!.darkestPixel()) })
                                 val width: Int = AstrophotographyApp.Companion.ZOOM_WIDTH
                                 val height: Int = AstrophotographyApp.Companion.ZOOM_HEIGHT
                                 val x: Int = zoomCenterXProperty.get() - width / 2
@@ -913,7 +913,7 @@ class AstrophotographyApp : Application() {
                                 val zx = ZOOM_WIDTH / 2
                                 val zy = ZOOM_HEIGHT / 2
                                 val r = sampleRadiusProperty.get()
-                                updateSingleGlowColor({ toJavafxColor(zoomInputDoubleImage!!.subImage(zx - r, zy - r, r + r + 1, r + r + 1).medianPixel(ColorModel.RGB, null)) })
+                                updateSingleGlowColor({ toJavafxColor(zoomInputDoubleImage!!.subImage(zx - r, zy - r, r + r + 1, r + r + 1).medianPixel())})
                                 val width = r + r + 1
                                 val height = r + r + 1
                                 val x = zoomCenterXProperty.get() - width / 2
@@ -929,7 +929,7 @@ class AstrophotographyApp : Application() {
                                 val zx: Int = AstrophotographyApp.Companion.ZOOM_WIDTH / 2
                                 val zy: Int = AstrophotographyApp.Companion.ZOOM_HEIGHT / 2
                                 val r: Int = sampleRadiusProperty.get()
-                                updateSingleGlowColor(Supplier<javafx.scene.paint.Color> { toJavafxColor(zoomInputDoubleImage!!.subImage(zx - r, zy - r, r + r + 1, r + r + 1).averagePixel(ch.obermuhlner.astro.image.color.ColorModel.RGB, null)) })
+                                updateSingleGlowColor(Supplier<javafx.scene.paint.Color> { toJavafxColor(zoomInputDoubleImage!!.subImage(zx - r, zy - r, r + r + 1, r + r + 1).averagePixel()) })
                                 val width: Int = r + r + 1
                                 val height: Int = r + r + 1
                                 val x: Int = zoomCenterXProperty.get() - width / 2
@@ -945,7 +945,7 @@ class AstrophotographyApp : Application() {
                                 val zx: Int = AstrophotographyApp.Companion.ZOOM_WIDTH / 2
                                 val zy: Int = AstrophotographyApp.Companion.ZOOM_HEIGHT / 2
                                 val r: Int = sampleRadiusProperty.get()
-                                updateSingleGlowColor(Supplier<javafx.scene.paint.Color> { toJavafxColor(zoomInputDoubleImage!!.subImage(zx - r, zy - r, r + r + 1, r + r + 1).darkestPixel(ch.obermuhlner.astro.image.color.ColorModel.RGB, null)) })
+                                updateSingleGlowColor(Supplier<javafx.scene.paint.Color> { toJavafxColor(zoomInputDoubleImage!!.subImage(zx - r, zy - r, r + r + 1, r + r + 1).darkestPixel()) })
                                 val width: Int = r + r + 1
                                 val height: Int = r + r + 1
                                 val x: Int = zoomCenterXProperty.get() - width / 2
@@ -1184,10 +1184,7 @@ class AstrophotographyApp : Application() {
                 x - sampleRadius,
                 y - sampleRadius,
                 sampleRadius + sampleRadius + 1,
-                sampleRadius + sampleRadius + 1,
-                ColorModel.RGB,
-                null
-        )
+                sampleRadius + sampleRadius + 1)
         fixPoints.add(FixPoint(x, y, Color(color[0], color[1], color[2], 1.0)))
     }
 

@@ -39,7 +39,6 @@ import javafx.scene.shape.Rectangle
 import javafx.scene.shape.Shape
 import javafx.stage.FileChooser
 import javafx.stage.Stage
-import javafx.util.Callback
 import java.io.*
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -336,7 +335,7 @@ class AstrophotographyApp : Application() {
         val inputImage = inputDoubleImage
         //DoubleImage inputImage = ImageReader.read(inputFile, ImageQuality.High);
         val outputImage = createOutputImage(inputImage!!)
-        removeGradient(inputImage, gradientDoubleImage!!, outputImage!!)
+        removeGradient(inputImage, gradientDoubleImage!!, outputImage)
         ImageWriter.write(outputImage, outputFile)
         saveProperties(toPropertiesFile(outputFile))
     }
@@ -404,7 +403,7 @@ class AstrophotographyApp : Application() {
         return result
     }
 
-    private fun createOutputImage(inputImage: DoubleImage): DoubleImage? {
+    private fun createOutputImage(inputImage: DoubleImage): DoubleImage {
         val width = inputImage.width
         val height = inputImage.height
         return ImageCreator.create(width, height, ImageQuality.High)
@@ -715,8 +714,8 @@ class AstrophotographyApp : Application() {
         zoomDeltaImageView = ImageView(zoomDeltaImage)
         run {
             val mainGridPane = GridPane()
-            mainGridPane.hgap = SPACING.toDouble()
-            mainGridPane.vgap = SPACING.toDouble()
+            mainGridPane.hgap = SPACING
+            mainGridPane.vgap = SPACING
             mainBox.children.add(mainGridPane)
             var rowIndex = 0
             run {
@@ -804,8 +803,8 @@ class AstrophotographyApp : Application() {
                 var glowGradientTab: Tab
                 run {
                     val glowSingleColorGridPane = GridPane()
-                    glowSingleColorGridPane.hgap = SPACING.toDouble()
-                    glowSingleColorGridPane.vgap = SPACING.toDouble()
+                    glowSingleColorGridPane.hgap = SPACING
+                    glowSingleColorGridPane.vgap = SPACING
                     glowSingleColorTab = Tab("Single Color", glowSingleColorGridPane)
                     glowTabPane.tabs.add(glowSingleColorTab)
                     glowSingleColorTab.tooltip = tooltip(("Determine a single color that will be used uniformly to estimate the glow.\n"
@@ -829,25 +828,25 @@ class AstrophotographyApp : Application() {
                             }
                         }
                         run {
-                            val button: javafx.scene.control.Button = javafx.scene.control.Button("Average All")
-                            buttonBox.getChildren().add(button)
+                            val button: Button = Button("Average All")
+                            buttonBox.children.add(button)
                             tooltip(button, "Finds the average color of all pixels in the input image.")
-                            button.setOnAction(javafx.event.EventHandler<javafx.event.ActionEvent?> { event: javafx.event.ActionEvent? ->
-                                updateSingleGlowColor(Supplier<javafx.scene.paint.Color> {
+                            button.setOnAction({ event: ActionEvent? ->
+                                updateSingleGlowColor({
                                     if (averageAllColor == null) {
-                                        averageAllColor = toJavafxColor(inputDoubleImage!!.averagePixel(ch.obermuhlner.astro.image.color.ColorModel.RGB))
+                                        averageAllColor = toJavafxColor(inputDoubleImage!!.averagePixel(ColorModel.RGB))
                                     }
-                                    averageAllColor
+                                    averageAllColor!!
                                 })
                                 singleGlowColorDescriptionProperty.set("Average All " + inputDoubleImage!!.width+ "x" + inputDoubleImage!!.height)
                             })
                         }
                         run {
-                            val button: javafx.scene.control.Button = javafx.scene.control.Button("Darkest All")
-                            buttonBox.getChildren().add(button)
+                            val button: Button = Button("Darkest All")
+                            buttonBox.children.add(button)
                             tooltip(button, "Finds the darkest color of all pixels in the input image.")
-                            button.setOnAction(javafx.event.EventHandler<javafx.event.ActionEvent?> { event: javafx.event.ActionEvent? ->
-                                updateSingleGlowColor(Supplier<javafx.scene.paint.Color> {
+                            button.setOnAction({ event: ActionEvent? ->
+                                updateSingleGlowColor({
                                     if (darkestAllColor == null) {
                                         darkestAllColor = toJavafxColor(inputDoubleImage!!.darkestPixel())
                                     }
@@ -875,26 +874,26 @@ class AstrophotographyApp : Application() {
                             }
                         }
                         run {
-                            val button: javafx.scene.control.Button = javafx.scene.control.Button("Average Zoom")
-                            buttonBox.getChildren().add(button)
+                            val button: Button = Button("Average Zoom")
+                            buttonBox.children.add(button)
                             tooltip(button, "Finds the average color of the pixels in the zoom input image.")
-                            button.setOnAction(javafx.event.EventHandler<javafx.event.ActionEvent?> { event: javafx.event.ActionEvent? ->
-                                updateSingleGlowColor(Supplier<javafx.scene.paint.Color> { toJavafxColor(zoomInputDoubleImage!!.averagePixel()) })
-                                val width: Int = AstrophotographyApp.Companion.ZOOM_WIDTH
-                                val height: Int = AstrophotographyApp.Companion.ZOOM_HEIGHT
+                            button.setOnAction({ event: ActionEvent? ->
+                                updateSingleGlowColor({ toJavafxColor(zoomInputDoubleImage!!.averagePixel()) })
+                                val width: Int = ZOOM_WIDTH
+                                val height: Int = ZOOM_HEIGHT
                                 val x: Int = zoomCenterXProperty.get() - width / 2
                                 val y: Int = zoomCenterYProperty.get() - height / 2
                                 singleGlowColorDescriptionProperty.set("Average Zoom " + x + "," + y + " " + width + "x" + height)
                             })
                         }
                         run {
-                            val button: javafx.scene.control.Button = javafx.scene.control.Button("Darkest Zoom")
-                            buttonBox.getChildren().add(button)
+                            val button: Button = Button("Darkest Zoom")
+                            buttonBox.children.add(button)
                             tooltip(button, "Finds the darkest color of the pixels in the zoom input image.")
-                            button.setOnAction(javafx.event.EventHandler<javafx.event.ActionEvent?> { event: javafx.event.ActionEvent? ->
-                                updateSingleGlowColor(Supplier<javafx.scene.paint.Color> { toJavafxColor(zoomInputDoubleImage!!.darkestPixel()) })
-                                val width: Int = AstrophotographyApp.Companion.ZOOM_WIDTH
-                                val height: Int = AstrophotographyApp.Companion.ZOOM_HEIGHT
+                            button.setOnAction({ event: ActionEvent? ->
+                                updateSingleGlowColor({ toJavafxColor(zoomInputDoubleImage!!.darkestPixel()) })
+                                val width: Int = ZOOM_WIDTH
+                                val height: Int = ZOOM_HEIGHT
                                 val x: Int = zoomCenterXProperty.get() - width / 2
                                 val y: Int = zoomCenterYProperty.get() - height / 2
                                 singleGlowColorDescriptionProperty.set("Darkest Zoom " + x + "," + y + " " + width + "x" + height)
@@ -922,14 +921,14 @@ class AstrophotographyApp : Application() {
                             }
                         }
                         run {
-                            val button: javafx.scene.control.Button = javafx.scene.control.Button("Average Sample")
-                            buttonBox.getChildren().add(button)
+                            val button: Button = Button("Average Sample")
+                            buttonBox.children.add(button)
                             tooltip(button, "Finds the average color of the pixels in the sample radius of the zoom input image.")
-                            button.setOnAction(javafx.event.EventHandler<javafx.event.ActionEvent?> { event: javafx.event.ActionEvent? ->
-                                val zx: Int = AstrophotographyApp.Companion.ZOOM_WIDTH / 2
-                                val zy: Int = AstrophotographyApp.Companion.ZOOM_HEIGHT / 2
+                            button.setOnAction({ event: ActionEvent? ->
+                                val zx: Int = ZOOM_WIDTH / 2
+                                val zy: Int = ZOOM_HEIGHT / 2
                                 val r: Int = sampleRadiusProperty.get()
-                                updateSingleGlowColor(Supplier<javafx.scene.paint.Color> { toJavafxColor(zoomInputDoubleImage!!.subImage(zx - r, zy - r, r + r + 1, r + r + 1).averagePixel()) })
+                                updateSingleGlowColor({ toJavafxColor(zoomInputDoubleImage!!.subImage(zx - r, zy - r, r + r + 1, r + r + 1).averagePixel()) })
                                 val width: Int = r + r + 1
                                 val height: Int = r + r + 1
                                 val x: Int = zoomCenterXProperty.get() - width / 2
@@ -938,14 +937,14 @@ class AstrophotographyApp : Application() {
                             })
                         }
                         run {
-                            val button: javafx.scene.control.Button = javafx.scene.control.Button("Darkest Sample")
-                            buttonBox.getChildren().add(button)
+                            val button: Button = Button("Darkest Sample")
+                            buttonBox.children.add(button)
                             tooltip(button, "Finds the darkest color of the pixels in the sample radius of the zoom input image.")
-                            button.setOnAction(javafx.event.EventHandler<javafx.event.ActionEvent?> { event: javafx.event.ActionEvent? ->
-                                val zx: Int = AstrophotographyApp.Companion.ZOOM_WIDTH / 2
-                                val zy: Int = AstrophotographyApp.Companion.ZOOM_HEIGHT / 2
+                            button.setOnAction({ event: ActionEvent? ->
+                                val zx: Int = ZOOM_WIDTH / 2
+                                val zy: Int = ZOOM_HEIGHT / 2
                                 val r: Int = sampleRadiusProperty.get()
-                                updateSingleGlowColor(Supplier<javafx.scene.paint.Color> { toJavafxColor(zoomInputDoubleImage!!.subImage(zx - r, zy - r, r + r + 1, r + r + 1).darkestPixel()) })
+                                updateSingleGlowColor({ toJavafxColor(zoomInputDoubleImage!!.subImage(zx - r, zy - r, r + r + 1, r + r + 1).darkestPixel()) })
                                 val width: Int = r + r + 1
                                 val height: Int = r + r + 1
                                 val x: Int = zoomCenterXProperty.get() - width / 2
@@ -993,8 +992,8 @@ class AstrophotographyApp : Application() {
                 }
                 run {
                     val glowBlurGridPane = GridPane()
-                    glowBlurGridPane.hgap = SPACING.toDouble()
-                    glowBlurGridPane.vgap = SPACING.toDouble()
+                    glowBlurGridPane.hgap = SPACING
+                    glowBlurGridPane.vgap = SPACING
                     glowBlurTab = Tab("Blur", glowBlurGridPane)
                     glowTabPane.tabs.add(glowBlurTab)
                     glowBlurTab.tooltip = tooltip(("Blurs the input image to calculate the glow image.\n"
@@ -1010,8 +1009,8 @@ class AstrophotographyApp : Application() {
                 }
                 run {
                     val glowInterpolateGridPane = GridPane()
-                    glowInterpolateGridPane.hgap = SPACING.toDouble()
-                    glowInterpolateGridPane.vgap = SPACING.toDouble()
+                    glowInterpolateGridPane.hgap = SPACING
+                    glowInterpolateGridPane.vgap = SPACING
                     glowGradientTab = Tab("Gradient", glowInterpolateGridPane)
                     glowTabPane.tabs.add(glowGradientTab)
                     glowGradientTab.tooltip = tooltip(("Interpolates the glow between two or more points.\n"
@@ -1040,7 +1039,7 @@ class AstrophotographyApp : Application() {
                         glowInterpolateGridPane.add(fixPointTableView, 0, glowInterpolateRowIndex, 4, 1)
                         fixPointTableView.placeholder = Label("Add points to define the background gradient.")
                         fixPointTableView.prefHeight = 100.0
-                        fixPointTableView.setRowFactory(Callback {
+                        fixPointTableView.setRowFactory({
                             val tableRow = TableRow<FixPoint>()
                             val gotoMenuItem = MenuItem("Go To")
                             gotoMenuItem.onAction = EventHandler { event: ActionEvent? -> setZoom(tableRow.item.x, tableRow.item.y) }
@@ -1103,8 +1102,8 @@ class AstrophotographyApp : Application() {
             }
             run {
                 val subtractionGridPane = GridPane()
-                subtractionGridPane.hgap = SPACING.toDouble()
-                subtractionGridPane.vgap = SPACING.toDouble()
+                subtractionGridPane.hgap = SPACING
+                subtractionGridPane.vgap = SPACING
                 mainBox.children.add(subtractionGridPane)
                 var algorithmRowIndex = 0
                 run {

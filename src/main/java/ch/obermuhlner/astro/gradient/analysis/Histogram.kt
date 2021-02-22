@@ -5,27 +5,23 @@ import ch.obermuhlner.astro.image.color.ColorModel
 
 class Histogram constructor(val colorModel: ColorModel, val binCount: Int) {
     private var sampleCount: Int = 0
-    private val sampleBins: Array<IntArray?>
+    private val sampleBins: Array<IntArray?> = arrayOfNulls(3)
     private var maxSampleCountInBin: Int = 0
     fun getBin(sampleIndex: Int, binIndex: Int): Double {
-        return (sampleBins.get(sampleIndex)!!.get(binIndex).toDouble()) / maxSampleCountInBin
+        return (sampleBins[sampleIndex]!![binIndex].toDouble()) / maxSampleCountInBin
     }
 
     fun getRawSampleBins(sampleIndex: Int): IntArray? {
-        return sampleBins.get(sampleIndex)
+        return sampleBins[sampleIndex]
     }
 
     fun getSampleBins(sampleIndex: Int): DoubleArray {
-        return getSampleBins(sampleIndex, null)
+        return getSampleBins(sampleIndex)
     }
 
-    fun getSampleBins(sampleIndex: Int, bins: DoubleArray?): DoubleArray {
-        var bins: DoubleArray? = bins
-        if (bins == null) {
-            bins = DoubleArray(binCount)
-        }
+    private fun getSampleBins(sampleIndex: Int, bins: DoubleArray = DoubleArray(binCount)): DoubleArray {
         for (i in 0 until binCount) {
-            bins[i] = (sampleBins.get(sampleIndex)!![i].toDouble()) / maxSampleCountInBin
+            bins[i] = (sampleBins[sampleIndex]!![i].toDouble()) / maxSampleCountInBin
         }
         return bins
     }
@@ -48,33 +44,32 @@ class Histogram constructor(val colorModel: ColorModel, val binCount: Int) {
         maxSampleCountInBin = 0
         for (sampleIndex in sampleBins.indices) {
             for (binIndex in 0 until binCount) {
-                maxSampleCountInBin = Math.max(maxSampleCountInBin, sampleBins.get(sampleIndex)!!.get(binIndex))
+                maxSampleCountInBin = Math.max(maxSampleCountInBin, sampleBins[sampleIndex]!![binIndex])
             }
         }
     }
 
-    fun clear() {
+    private fun clear() {
         sampleCount = 0
         for (sampleIndex in sampleBins.indices) {
             for (binIndex in 0 until binCount) {
-                sampleBins.get(sampleIndex)!![binIndex] = 0
+                sampleBins[sampleIndex]!![binIndex] = 0
             }
         }
     }
 
     private fun addSample(pixel: DoubleArray, sampleIndex: Int) {
-        var value: Double = pixel.get(sampleIndex)
+        var value: Double = pixel[sampleIndex]
         if (colorModel === ColorModel.HSV && sampleIndex == ColorModel.HSV.H) {
             value = value / 360.0
         }
         var binIndex: Int = (value * binCount).toInt()
         binIndex = Math.max(0, binIndex)
         binIndex = Math.min(binCount - 1, binIndex)
-        sampleBins.get(sampleIndex)!![binIndex]++
+        sampleBins[sampleIndex]!![binIndex]++
     }
 
     init {
-        sampleBins = arrayOfNulls(3)
         for (i in 0..2) {
             sampleBins[i] = IntArray(binCount)
         }

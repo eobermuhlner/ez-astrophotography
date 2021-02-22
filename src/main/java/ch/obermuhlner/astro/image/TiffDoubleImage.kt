@@ -7,9 +7,9 @@ import mil.nga.tiff.TIFFImage
 class TiffDoubleImage(val tiffImage: TIFFImage, read: Boolean) : DoubleImage {
     val image: Rasters = if (read) tiffImage.fileDirectories[0].readRasters() else tiffImage.fileDirectories[0].writeRasters
     override val width: Int
-        get() = image.getWidth()
+        get() = image.width
     override val height: Int
-        get() = image.getHeight()
+        get() = image.height
 
     override fun getNativePixel(x: Int, y: Int, color: DoubleArray): DoubleArray {
         val pixel: Array<Number> = image.getPixel(x, y)

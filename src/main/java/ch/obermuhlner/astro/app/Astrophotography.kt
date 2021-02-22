@@ -1,14 +1,13 @@
 package ch.obermuhlner.astro.app
 
-import ch.obermuhlner.astro.app.CommandParser.NamedArguments
-import ch.obermuhlner.astro.app.CommandParser.OptionsWithArguments
 import ch.obermuhlner.astro.gradient.Point
 import ch.obermuhlner.astro.gradient.filter.*
 import ch.obermuhlner.astro.gradient.operation.ImageOperation
 import ch.obermuhlner.astro.gradient.operation.SubtractLinearImageOperation
 import ch.obermuhlner.astro.image.*
 import ch.obermuhlner.astro.image.color.ColorModel
-import java.io.*
+import java.io.File
+import java.io.IOException
 import java.nio.file.Files
 import java.util.*
 import java.util.concurrent.atomic.AtomicInteger

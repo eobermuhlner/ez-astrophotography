@@ -4,7 +4,6 @@ import ch.obermuhlner.astro.gradient.Point
 import ch.obermuhlner.astro.gradient.points.AllPointsFinder
 import ch.obermuhlner.astro.gradient.points.PointsFinder
 import ch.obermuhlner.astro.image.DoubleImage
-import ch.obermuhlner.astro.image.color.ColorModel
 import ch.obermuhlner.astro.image.color.ColorModel.RGB
 import java.util.*
 import kotlin.math.pow
@@ -40,7 +39,7 @@ class GradientInterpolationFilter : Filter {
     fun setFixPoints(fixPoints: List<Point>, fixColors: List<DoubleArray>) {
         mapPointToColor.clear()
         for (i in fixPoints.indices) {
-            mapPointToColor.put(fixPoints[i], fixColors[i])
+            mapPointToColor[fixPoints[i]] = fixColors[i]
         }
         pointsFinder.setFixPoints(fixPoints)
     }
@@ -85,17 +84,17 @@ class GradientInterpolationFilter : Filter {
                     factors[0] = 1.0
                     totalFactor = 1.0
                 }
-                gradientColor[ColorModel.RGB.R] = 0.0
-                gradientColor[ColorModel.RGB.G] = 0.0
-                gradientColor[ColorModel.RGB.B] = 0.0
+                gradientColor[RGB.R] = 0.0
+                gradientColor[RGB.G] = 0.0
+                gradientColor[RGB.B] = 0.0
                 for (i in 0 until n) {
                     val factor: Double = factors[i] / totalFactor
                     val fixColor: DoubleArray = relevantFixColors[i]
-                    gradientColor[ColorModel.RGB.R] += fixColor[ColorModel.RGB.R] * factor
-                    gradientColor[ColorModel.RGB.G] += fixColor[ColorModel.RGB.G] * factor
-                    gradientColor[ColorModel.RGB.B] += fixColor[ColorModel.RGB.B] * factor
+                    gradientColor[RGB.R] += fixColor[RGB.R] * factor
+                    gradientColor[RGB.G] += fixColor[RGB.G] * factor
+                    gradientColor[RGB.B] += fixColor[RGB.B] * factor
                 }
-                source.getPixel(x, y, ColorModel.RGB, sourceColor)
+                source.getPixel(x, y, RGB, sourceColor)
                 if (adaptiveGradient) {
 //          HSVColor imageHSV = HSVColor.fromRGB(inputColor);
 //          HSVColor gradientHSV = HSVColor.fromRGB(gradientColor);
@@ -103,13 +102,13 @@ class GradientInterpolationFilter : Filter {
 //          gradientHSV = new HSVColor(gradientHSV.h, gradientHSV.s, v);
 //          gradientColor = RGBColor.fromHSV(gradientHSV);
                 }
-                target.setPixel(x, y, ColorModel.RGB, gradientColor)
+                target.setPixel(x, y, RGB, gradientColor)
             }
         }
         return target
     }
 
-    public override fun toString(): String {
+    override fun toString(): String {
         return "Gradient{pointsFinder=$pointsFinder, interpolationPower=$interpolationPower, adaptiveGradient=$adaptiveGradient, mapPointToColor=$mapPointToColor}"
     }
 }

@@ -13,9 +13,9 @@ class BoxBlurFilter constructor(private val radius: Int, private val model: Colo
         for (kx in x - radius until x + radius) {
             for (ky in y - radius until y + radius) {
                 source.getPixel(kx, ky, model, color)
-                sum0 += color.get(0)
-                sum1 += color.get(1)
-                sum2 += color.get(2)
+                sum0 += color[0]
+                sum1 += color[1]
+                sum2 += color[2]
             }
         }
         color[0] = sum0 / kernelSize
@@ -24,7 +24,7 @@ class BoxBlurFilter constructor(private val radius: Int, private val model: Colo
         return color
     }
 
-    public override fun toString(): String {
+    override fun toString(): String {
         return "BoxBlur(radius=$radius)"
     }
 

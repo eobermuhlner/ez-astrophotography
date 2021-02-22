@@ -3,8 +3,6 @@ package ch.obermuhlner.astro.gradient.filter
 import ch.obermuhlner.astro.image.DoubleImage
 import ch.obermuhlner.astro.image.color.ColorModel
 import java.util.*
-import java.util.function.Function
-import java.util.function.ToDoubleFunction
 
 class HorizontalMedianFilter constructor(private val radius: Int, private val model: ColorModel) : Filter {
     override fun filter(source: DoubleImage, target: DoubleImage, width: Int, height: Int): DoubleImage {
@@ -15,7 +13,7 @@ class HorizontalMedianFilter constructor(private val radius: Int, private val mo
                 for (dx in -radius..radius) {
                     val xx: Int = x + dx
                     if (source.isReallyInside(xx, y)) {
-                        source.getPixel(xx, y, model, data.get(n++))
+                        source.getPixel(xx, y, model, data[n++])
                     }
                 }
                 Arrays.sort(data, 0, n,

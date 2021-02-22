@@ -195,7 +195,7 @@ class GaussianBlurFilter constructor(private val radius: Int, private val model:
         return sizes
     }
 
-    public override fun toString(): String {
+    override fun toString(): String {
         return "GaussianBlur(radius=$radius)"
     }
 }

@@ -13,23 +13,23 @@ class Point constructor(val x: Int, val y: Int) {
         return Math.sqrt(distanceSquare(other))
     }
 
-    public override fun equals(o: Any?): Boolean {
-        if (this === o) {
+    override fun equals(other: Any?): Boolean {
+        if (this === other) {
             return true
         }
-        if (o == null || javaClass != o.javaClass) {
+        if (other == null || javaClass != other.javaClass) {
             return false
         }
-        val point: Point = o as Point
+        val point: Point = other as Point
         return x == point.x &&
                 y == point.y
     }
 
-    public override fun hashCode(): Int {
+    override fun hashCode(): Int {
         return Objects.hash(x, y)
     }
 
-    public override fun toString(): String {
+    override fun toString(): String {
         return ("Point{" +
                 "x=" + x +
                 ", y=" + y +

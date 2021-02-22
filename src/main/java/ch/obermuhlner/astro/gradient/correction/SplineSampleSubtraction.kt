@@ -16,13 +16,13 @@ class SplineSampleSubtraction constructor(private val factor: Double, private va
         yPoints.add(delta * factor)
         var i = 0
         while (i < xyPairs.size) {
-            xPoints.add(xyPairs.get(i + 0))
-            yPoints.add(xyPairs.get(i + 1))
+            xPoints.add(xyPairs[i + 0])
+            yPoints.add(xyPairs[i + 1])
             i += 2
         }
         xPoints.add(1.0)
         yPoints.add(1.0)
-        val spline: SplineInterpolator = SplineInterpolator.Companion.createMonotoneCubicSpline(
+        val spline: SplineInterpolator = SplineInterpolator.createMonotoneCubicSpline(
                 xPoints,
                 yPoints
         )

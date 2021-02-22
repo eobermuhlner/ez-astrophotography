@@ -4,7 +4,7 @@ import ch.obermuhlner.astro.image.ArrayDoubleImage
 import ch.obermuhlner.astro.image.DoubleImage
 import ch.obermuhlner.astro.image.color.ColorModel
 
-class PseudoMedianFilter constructor(private val radius: Int, private val model: ColorModel) : Filter {
+class PseudoMedianFilter constructor(private val radius: Int, model: ColorModel) : Filter {
     private val horizontalMedianFilter: HorizontalMedianFilter = HorizontalMedianFilter(radius, model)
     private val verticalMedianFilter: VerticalMedianFilter = VerticalMedianFilter(radius, model)
 

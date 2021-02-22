@@ -17,17 +17,17 @@ class SplineInterpolator private constructor(private val mX: List<Double>, priva
         if (java.lang.Double.isNaN(x)) {
             return x
         }
-        if (x <= mX.get(0)) {
-            return mY.get(0)
+        if (x <= mX[0]) {
+            return mY[0]
         }
-        if (x >= mX.get(n - 1)) {
-            return mY.get(n - 1)
+        if (x >= mX[n - 1]) {
+            return mY[n - 1]
         }
 
         // Find the index 'i' of the last point with smaller X.
         // We know this will be within the spline due to the boundary tests.
         var i: Int = 0
-        while (x >= mX.get(i + 1)) {
+        while (x >= mX[i + 1]) {
             i += 1
             if (x == mX[i]) {
                 return mY[i]
@@ -35,14 +35,14 @@ class SplineInterpolator private constructor(private val mX: List<Double>, priva
         }
 
         // Perform cubic Hermite spline interpolation.
-        val h: Double = mX.get(i + 1) - mX[i]
+        val h: Double = mX[i + 1] - mX[i]
         val t: Double = (x - mX[i]) / h
         return ((mY[i] * (1 + 2 * t) + h * mM[i] * t) * (1 - t) * (1 - t)
-                + (mY.get(i + 1) * (3 - 2 * t) + h * mM.get(i + 1) * (t - 1)) * t * t)
+                + (mY[i + 1] * (3 - 2 * t) + h * mM[i + 1] * (t - 1)) * t * t)
     }
 
     // For debugging.
-    public override fun toString(): String {
+    override fun toString(): String {
         val str: StringBuilder = StringBuilder()
         val n: Int = mX.size
         str.append("[")

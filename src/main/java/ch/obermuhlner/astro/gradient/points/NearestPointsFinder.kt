@@ -2,7 +2,6 @@ package ch.obermuhlner.astro.gradient.points
 
 import ch.obermuhlner.astro.gradient.Point
 import java.util.*
-import java.util.function.ToDoubleFunction
 import kotlin.math.min
 
 class NearestPointsFinder constructor(private val n: Int) : PointsFinder {

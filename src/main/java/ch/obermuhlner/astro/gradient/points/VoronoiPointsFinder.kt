@@ -28,7 +28,7 @@ class VoronoiPointsFinder : PointsFinder {
         val vectors: MutableList<Vector2D> = ArrayList()
         for (point: Point in points) {
             val v = Vector2D(point.x.toDouble(), point.y.toDouble())
-            delaunayMapToPoints.put(v, point)
+            delaunayMapToPoints[v] = point
             vectors.add(v)
         }
         val triangulator = DelaunayTriangulator(vectors)
@@ -41,7 +41,7 @@ class VoronoiPointsFinder : PointsFinder {
         delaunayTriangles = triangulator.triangles
     }
 
-    public override fun getRelevantFixPoints(point: Point): List<Point> {
+    override fun getRelevantFixPoints(point: Point): List<Point> {
         val delaunayPolygon: MutableSet<Vector2D> = HashSet()
         if (points.size <= 3) {
             return points
@@ -65,7 +65,7 @@ class VoronoiPointsFinder : PointsFinder {
         }
         val result: MutableList<Point> = ArrayList()
         for (vector2D: Vector2D in delaunayPolygon) {
-            result.add(delaunayMapToPoints.get(vector2D)!!)
+            result.add(delaunayMapToPoints[vector2D]!!)
         }
         return result
     }

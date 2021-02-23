@@ -4,7 +4,7 @@ import ch.obermuhlner.astro.image.color.ColorModel
 import kotlin.math.max
 import kotlin.math.min
 
-class SubDoubleImage(private val image: DoubleImage, private val offsetX: Int, private val offsetY: Int, override val width: Int, override val height: Int) : DoubleImage {
+class CroppedDoubleImage(private val image: DoubleImage, private val offsetX: Int, private val offsetY: Int, override val width: Int, override val height: Int) : DoubleImage {
     override val colorModel: ColorModel
         get() = image.colorModel
 

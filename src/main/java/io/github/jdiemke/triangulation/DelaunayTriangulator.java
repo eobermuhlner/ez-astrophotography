@@ -38,7 +38,7 @@ public class DelaunayTriangulator {
             throw new NotEnoughPointsException("Less than three points in point set.");
         }
 
-        /**
+        /*
          * In order for the in circumcircle test to not consider the vertices of
          * the super triangle we have to start out with a big triangle
          * containing the whole point set. We have to scale the super triangle
@@ -64,7 +64,7 @@ public class DelaunayTriangulator {
             Triangle2D triangle = triangleSoup.findContainingTriangle(pointSet.get(i));
 
             if (triangle == null) {
-                /**
+                /*
                  * If no containing triangle exists, then the vertex is not
                  * inside a triangle (this can also happen due to numerical
                  * errors) and lies on an edge. In order to find this edge we
@@ -98,7 +98,7 @@ public class DelaunayTriangulator {
                 legalizeEdge(triangle3, new Edge2D(edge.a, secondNoneEdgeVertex), pointSet.get(i));
                 legalizeEdge(triangle4, new Edge2D(edge.b, secondNoneEdgeVertex), pointSet.get(i));
             } else {
-                /**
+                /*
                  * The vertex is inside a triangle.
                  */
                 Vector2D a = triangle.a;
@@ -121,7 +121,7 @@ public class DelaunayTriangulator {
             }
         }
 
-        /**
+        /*
          * Remove all triangles that contain vertices of the super triangle.
          */
         triangleSoup.removeTrianglesUsing(superTriangle.a);
@@ -142,7 +142,7 @@ public class DelaunayTriangulator {
     private void legalizeEdge(Triangle2D triangle, Edge2D edge, Vector2D newVertex) {
         Triangle2D neighbourTriangle = triangleSoup.findNeighbour(triangle, edge);
 
-        /**
+        /*
          * If the triangle has a neighbor, then legalize the edge
          */
         if (neighbourTriangle != null) {

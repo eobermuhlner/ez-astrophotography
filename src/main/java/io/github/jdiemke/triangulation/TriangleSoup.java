@@ -93,7 +93,7 @@ class TriangleSoup {
      * Returns one of the possible triangles sharing the specified edge. Based
      * on the ordering of the triangles in this triangle soup the returned
      * triangle may differ. To find the other triangle that shares this edge use
-     * the {@link findNeighbour( Triangle2D triangle, Edge2D edge)} method.
+     * the {@link #findNeighbour( Triangle2D triangle, Edge2D edge)} method.
      * 
      * @param edge
      *            The edge

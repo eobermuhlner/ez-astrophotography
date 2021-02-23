@@ -3,6 +3,8 @@ package ch.obermuhlner.astro.image
 import ch.obermuhlner.astro.image.color.ColorModel
 import ch.obermuhlner.astro.image.color.ColorUtil
 import java.util.*
+import kotlin.math.max
+import kotlin.math.min
 
 interface DoubleImage {
     val width: Int
@@ -13,9 +15,12 @@ interface DoubleImage {
     fun getNativePixel(x: Int, y: Int, color: DoubleArray = DoubleArray(3)): DoubleArray
     fun setNativePixel(x: Int, y: Int, color: DoubleArray)
 
+    operator fun get(x: Int, y: Int) = getPixel(x, y)
+    operator fun set(x: Int, y: Int, color: DoubleArray) = setPixel(x, y, color)
+
     fun getPixel(x: Int, y: Int, colorModel: ColorModel = ColorModel.RGB, color: DoubleArray = DoubleArray(3)): DoubleArray {
-        val xx = Math.max(0, Math.min(width - 1, x))
-        val yy = Math.max(0, Math.min(height - 1, y))
+        val xx = max(0, min(width - 1, x))
+        val yy = max(0, min(height - 1, y))
         val result = getNativePixel(xx, yy, color)
         if (colorModel !== this.colorModel) {
             ColorUtil.convert(result, colorModel, result, this.colorModel)
@@ -50,11 +55,11 @@ interface DoubleImage {
     }
 
     fun setPixels(x: Int, y: Int, width: Int, height: Int, colorModel: ColorModel = ColorModel.RGB, fillColor: DoubleArray) {
-        subImage(x, y, width, height).setPixels(colorModel, fillColor)
+        croppedImage(x, y, width, height).setPixels(colorModel, fillColor)
     }
 
     fun setPixels(sourceX: Int, sourceY: Int, source: DoubleImage, targetX: Int, targetY: Int, width: Int, height: Int, colorModel: ColorModel = ColorModel.RGB, outsideColor: DoubleArray? = null) {
-        subImage(targetX, targetY, width, height).setPixels(source.subImage(sourceX, sourceY, width, height), colorModel, outsideColor)
+        croppedImage(targetX, targetY, width, height).setPixels(source.croppedImage(sourceX, sourceY, width, height), colorModel, outsideColor)
     }
 
     fun setPixels(source: DoubleImage, colorModel: ColorModel = ColorModel.RGB, outsideColor: DoubleArray? = null) {
@@ -81,12 +86,12 @@ interface DoubleImage {
         return isInside(x, y)
     }
 
-    fun subImage(x: Int, y: Int, width: Int, height: Int): DoubleImage {
-        return SubDoubleImage(this, x, y, width, height)
+    fun croppedImage(x: Int, y: Int, width: Int, height: Int): DoubleImage {
+        return CroppedDoubleImage(this, x, y, width, height)
     }
 
     fun averagePixel(x: Int, y: Int, width: Int, height: Int, colorModel: ColorModel = ColorModel.RGB, color: DoubleArray = DoubleArray(3)): DoubleArray {
-        return subImage(x, y, width, height).averagePixel(colorModel, color)
+        return croppedImage(x, y, width, height).averagePixel(colorModel, color)
     }
 
     fun averagePixel(colorModel: ColorModel = ColorModel.RGB, color: DoubleArray = DoubleArray(3)): DoubleArray {
@@ -112,7 +117,7 @@ interface DoubleImage {
     }
 
     fun medianPixel(x: Int, y: Int, width: Int, height: Int, colorModel: ColorModel = ColorModel.RGB, color: DoubleArray = DoubleArray(3)): DoubleArray {
-        return subImage(x, y, width, height).medianPixel(colorModel, color)
+        return croppedImage(x, y, width, height).medianPixel(colorModel, color)
     }
 
     fun medianPixel(colorModel: ColorModel = ColorModel.RGB, color: DoubleArray = DoubleArray(3)): DoubleArray {

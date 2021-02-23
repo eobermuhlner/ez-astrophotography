@@ -292,7 +292,7 @@ public enum FieldTagType {
 	 */
 	private static final Map<Integer, FieldTagType> idMapping = new HashMap<>();
 
-	/**
+	/*
 	 * Load the id mapping
 	 */
 	static {

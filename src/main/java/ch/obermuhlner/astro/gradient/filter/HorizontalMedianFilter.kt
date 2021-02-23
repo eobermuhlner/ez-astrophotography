@@ -12,7 +12,7 @@ class HorizontalMedianFilter constructor(private val radius: Int, private val mo
                 var n = 0
                 for (dx in -radius..radius) {
                     val xx: Int = x + dx
-                    if (source.isReallyInside(xx, y)) {
+                    if (source.isValidPixel(xx, y)) {
                         source.getPixel(xx, y, model, data[n++])
                     }
                 }

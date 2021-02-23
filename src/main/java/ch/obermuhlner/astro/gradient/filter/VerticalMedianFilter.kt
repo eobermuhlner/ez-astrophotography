@@ -12,7 +12,7 @@ class VerticalMedianFilter constructor(private val radius: Int, private val mode
                 var n = 0
                 for (dy in -radius..radius) {
                     val yy: Int = y + dy
-                    if (source.isReallyInside(x, yy)) {
+                    if (source.isValidPixel(x, yy)) {
                         source.getPixel(x, yy, model, data[n++])
                     }
                 }

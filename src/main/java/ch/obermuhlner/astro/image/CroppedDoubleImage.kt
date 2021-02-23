@@ -4,12 +4,20 @@ import ch.obermuhlner.astro.image.color.ColorModel
 import kotlin.math.max
 import kotlin.math.min
 
-class CroppedDoubleImage(private val image: DoubleImage, private val offsetX: Int, private val offsetY: Int, override val width: Int, override val height: Int) : DoubleImage {
+class CroppedDoubleImage(private val image: DoubleImage, private val offsetX: Int, private val offsetY: Int, override val width: Int, override val height: Int, val strictClipping: Boolean = true) : DoubleImage {
     override val colorModel: ColorModel
         get() = image.colorModel
 
-    override fun isReallyInside(x: Int, y: Int): Boolean {
-        return isInside(x, y) && image.isInside(x + offsetX, y + offsetY)
+    override fun isInsideUnderlying(x: Int, y: Int): Boolean {
+        return image.isInside(x + offsetX, y + offsetY)
+    }
+
+    override fun isValidPixel(x: Int, y: Int): Boolean {
+        return if (strictClipping) {
+            isInsideUnderlying(x, y)
+        } else {
+            super.isValidPixel(x, y)
+        }
     }
 
     override fun getNativePixel(x: Int, y: Int, color: DoubleArray): DoubleArray {

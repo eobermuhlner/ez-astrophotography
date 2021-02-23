@@ -82,12 +82,16 @@ interface DoubleImage {
         return x >= 0 && y >= 0 && x < width && y < height
     }
 
-    fun isReallyInside(x: Int, y: Int): Boolean {
-        return isInside(x, y)
+    fun isInsideUnderlying(x: Int, y: Int): Boolean {
+        return true
     }
 
-    fun croppedImage(x: Int, y: Int, width: Int, height: Int): DoubleImage {
-        return CroppedDoubleImage(this, x, y, width, height)
+    fun isValidPixel(x: Int, y: Int): Boolean {
+        return isInside(x, y) && isInsideUnderlying(x, y)
+    }
+
+    fun croppedImage(x: Int, y: Int, width: Int, height: Int, strictClipping: Boolean = true): DoubleImage {
+        return CroppedDoubleImage(this, x, y, width, height, strictClipping)
     }
 
     fun averagePixel(x: Int, y: Int, width: Int, height: Int, colorModel: ColorModel = ColorModel.RGB, color: DoubleArray = DoubleArray(3)): DoubleArray {
@@ -101,7 +105,7 @@ interface DoubleImage {
         var sample2 = 0.0
         for (y in 0 until height) {
             for (x in 0 until width) {
-                if (isReallyInside(x, y)) {
+                if (isValidPixel(x, y)) {
                     getPixel(x, y, colorModel, color)
                     sample0 += color[0]
                     sample1 += color[1]
@@ -124,7 +128,7 @@ interface DoubleImage {
         val data: MutableList<DoubleArray> = ArrayList(width * height)
         for (y in 0 until height) {
             for (x in 0 until width) {
-                if (isReallyInside(x, y)) {
+                if (isValidPixel(x, y)) {
                     val sample = getPixel(x, y, ColorModel.HSV)
                     data.add(sample)
                 }
@@ -155,7 +159,7 @@ interface DoubleImage {
         var bestV = 1.0
         for (y in 0 until height) {
             for (x in 0 until width) {
-                if (isReallyInside(x, y)) {
+                if (isValidPixel(x, y)) {
                     getPixel(x, y, ColorModel.HSV, tempHSV)
                     val v = tempHSV[ColorModel.HSV.V]
                     if (v < bestV) {
@@ -173,7 +177,7 @@ interface DoubleImage {
         var bestV = 0.0
         for (y in 0 until height) {
             for (x in 0 until width) {
-                if (isReallyInside(x, y)) {
+                if (isValidPixel(x, y)) {
                     getPixel(x, y, ColorModel.HSV, tempHSV)
                     val v = tempHSV[ColorModel.HSV.V]
                     if (v > bestV) {

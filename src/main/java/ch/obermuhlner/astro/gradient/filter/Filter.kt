@@ -19,8 +19,8 @@ open interface Filter {
     }
 
     fun filter(source: DoubleImage, sourceX: Int, sourceY: Int, target: DoubleImage, targetX: Int, targetY: Int, width: Int, height: Int): DoubleImage {
-        val subSource = source.croppedImage(sourceX, sourceY, width, height)
-        val subTarget = target.croppedImage(targetX, targetY, width, height)
+        val subSource = source.croppedImage(sourceX, sourceY, width, height, false)
+        val subTarget = target.croppedImage(targetX, targetY, width, height, false)
         return filter(subSource, subTarget)
     }
 }

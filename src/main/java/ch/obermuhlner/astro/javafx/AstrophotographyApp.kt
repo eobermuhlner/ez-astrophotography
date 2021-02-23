@@ -201,12 +201,16 @@ class AstrophotographyApp : Application() {
 
     private fun removeGradient(input: DoubleImage, gradient: DoubleImage, output: DoubleImage) {
         when (glowStrategyProperty.get()) {
-            GlowStrategy.SingleColor -> gradient.setPixels(ColorModel.RGB, toDoubleColorRGB(singleGlowColorProperty.get()!!))
+            GlowStrategy.SingleColor -> {
+                gradient.setPixels(ColorModel.RGB, toDoubleColorRGB(singleGlowColorProperty.get()!!))
+            }
             GlowStrategy.Blur -> {
                 val gaussianBlurFilter = GaussianBlurFilter(blurRadiusProperty.get(), ColorModel.RGB)
                 gaussianBlurFilter.filter(input, gradient)
             }
-            GlowStrategy.Gradient -> gradientInterpolationFilter.filter(input, gradient)
+            GlowStrategy.Gradient -> {
+                gradientInterpolationFilter.filter(input, gradient)
+            }
         }
         gradientSubtractor.operation(input, gradient, output)
     }
@@ -246,18 +250,29 @@ class AstrophotographyApp : Application() {
 
     private fun createToolbar(stage: Stage): Node {
         val box = HBox(SPACING)
-        val openButton = Button("Open ...")
-        openButton.tooltip = tooltip("Opens a new input image or EZ-Astro project.")
+        val openImageButton = Button("Open Image ...")
+        openImageButton.tooltip = tooltip("Opens a new input image.")
+        val openProjectButton = Button("Open Project ...")
+        openProjectButton.tooltip = tooltip("Opens an EZ-Astro project.")
         val saveButton = Button("Save ...")
         saveButton.tooltip = tooltip("Saves the calculated output image.")
         saveButton.isDisable = true
-        box.children.add(openButton)
-        openButton.onAction = EventHandler {
+
+        box.children.add(openImageButton)
+        openImageButton.onAction = EventHandler {
             openImageFile(stage)
             saveButton.isDisable = false
         }
+
+        box.children.add(openProjectButton)
+        openProjectButton.onAction = EventHandler {
+            openProjectFile(stage)
+            saveButton.isDisable = false
+        }
+
         box.children.add(saveButton)
         saveButton.onAction = EventHandler { saveImageFile(stage) }
+
         val crosshairColorButton = createColorButton(crosshairColorProperty, Rectangle(10.0, 10.0))
         crosshairColorButton.tooltip = tooltip("Toggles the color of the crosshair in the zoom images.")
         box.children.add(crosshairColorButton)
@@ -283,21 +298,35 @@ class AstrophotographyApp : Application() {
     private fun openImageFile(stage: Stage) {
         val fileChooser = FileChooser()
         fileChooser.initialDirectory = homeDirectory.toFile()
-        fileChooser.title = "Open Input Image or EZ-Astrophotography Project"
-        fileChooser.extensionFilters.add(FileChooser.ExtensionFilter("Standard", "*" + EZ_ASTRO_FILE_EXTENSION, "*.tif", "*.tiff", "*.png", "*.jpg", "*.jpeg"))
-        fileChooser.extensionFilters.add(FileChooser.ExtensionFilter("Project", "*" + EZ_ASTRO_FILE_EXTENSION))
+        fileChooser.title = "Open Input Image"
         fileChooser.extensionFilters.add(FileChooser.ExtensionFilter("Image", "*.tif", "*.tiff", "*.png", "*.jpg", "*.jpeg"))
         fileChooser.extensionFilters.add(FileChooser.ExtensionFilter("All", "*"))
         val chosenFile = fileChooser.showOpenDialog(stage)
         if (chosenFile != null) {
             ProgressDialog.show("Loading", "Loading input image ...") {
                 try {
-                    if (chosenFile.path.endsWith(EZ_ASTRO_FILE_EXTENSION)) {
-                        inputFile = loadProperties(chosenFile)
-                    } else {
-                        inputFile = chosenFile
-                        loadImage(inputFile!!)
-                    }
+                    inputFile = chosenFile
+                    loadImage(inputFile!!)
+                    stage.title = inputFile?.name
+                } catch (e: IOException) {
+                    e.printStackTrace()
+                }
+            }
+        }
+    }
+
+    private fun openProjectFile(stage: Stage) {
+        val fileChooser = FileChooser()
+        fileChooser.initialDirectory = homeDirectory.toFile()
+        fileChooser.title = "Open Input Image"
+        fileChooser.extensionFilters.add(FileChooser.ExtensionFilter("EZ-Astro", "*" + EZ_ASTRO_FILE_EXTENSION))
+        val propertiesFile = fileChooser.showOpenDialog(stage)
+        if (propertiesFile != null) {
+            ProgressDialog.show("Loading", "Loading EZ-Astro project ...") {
+                try {
+                    val imageFile = loadProperties(propertiesFile)
+                    inputFile = imageFile
+                    stage.title = imageFile.name + " - " + propertiesFile.name
                 } catch (e: IOException) {
                     e.printStackTrace()
                 }
@@ -316,15 +345,14 @@ class AstrophotographyApp : Application() {
         val fileChooser = FileChooser()
         fileChooser.initialDirectory = directory
         fileChooser.title = "Save Image"
-        fileChooser.extensionFilters.add(FileChooser.ExtensionFilter("Standard", "*" + EZ_ASTRO_FILE_EXTENSION, "*.tif", "*.tiff", "*.png", "*.jpg", "*.jpeg"))
-        fileChooser.extensionFilters.add(FileChooser.ExtensionFilter("Project", "*" + EZ_ASTRO_FILE_EXTENSION))
         fileChooser.extensionFilters.add(FileChooser.ExtensionFilter("Image", "*.tif", "*.tiff", "*.png", "*.jpg", "*.jpeg"))
         fileChooser.extensionFilters.add(FileChooser.ExtensionFilter("All", "*"))
         val outputFile = fileChooser.showSaveDialog(stage)
         if (outputFile != null) {
             ProgressDialog.show("Saving", "Saving output image ...") {
                 try {
-                    saveImage(outputFile)
+                    val propertiesFile = saveImage(outputFile)
+                    stage.title = inputFile!!.name + " - " + propertiesFile.name
                 } catch (e: IOException) {
                     e.printStackTrace()
                 }
@@ -333,13 +361,16 @@ class AstrophotographyApp : Application() {
     }
 
     @Throws(IOException::class)
-    private fun saveImage(outputFile: File) {
+    private fun saveImage(outputFile: File): File {
         val inputImage = inputDoubleImage
         //DoubleImage inputImage = ImageReader.read(inputFile, ImageQuality.High);
         val outputImage = createOutputImage(inputImage)
         removeGradient(inputImage, gradientDoubleImage, outputImage)
         ImageWriter.write(outputImage, outputFile)
-        saveProperties(toPropertiesFile(outputFile))
+
+        val propertiesFile = toPropertiesFile(outputFile)
+        saveProperties(propertiesFile)
+        return propertiesFile
     }
 
     private fun toPropertiesFile(outputFile: File): File {

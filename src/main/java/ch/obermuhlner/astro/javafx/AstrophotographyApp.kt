@@ -73,40 +73,43 @@ class AstrophotographyApp : Application() {
     @Volatile
     private var darkestAllColor: Color? = null
     private val removalFactorProperty: DoubleProperty = SimpleDoubleProperty()
-    private val sampleSubtractionStrategyProperty: ObjectProperty<SubtractionStrategy> = SimpleObjectProperty()
+    private val sampleSubtractionStrategyProperty: ObjectProperty<SubtractionStrategy> = SimpleObjectProperty(SubtractionStrategy.SubtractLinear)
     private val crosshairColors = listOf(Color.YELLOW, Color.RED, Color.GREEN, Color.BLUE, Color.TRANSPARENT)
     private val crosshairColorProperty: ObjectProperty<Color> = SimpleObjectProperty(crosshairColors[0])
     private val fixPointColorProperty: ObjectProperty<Color> = SimpleObjectProperty(crosshairColors[1])
+
     private var inputFile: File? = null
     private var inputDecorationsPane: Pane? = null
     private var gradientDecorationsPane: Pane? = null
     private var outputDecorationsPane: Pane? = null
     private var deltaDecorationsPane: Pane? = null
-    private var inputImage: WritableImage? = null
-    private var inputDoubleImage: DoubleImage? = null
+    private var inputImage: WritableImage = DummyWritableImage
+    private var inputDoubleImage: DoubleImage = DummyDoubleImage
     private var inputImageView: ImageView? = null
-    private var gradientImage: WritableImage? = null
-    private var gradientDoubleImage: DoubleImage? = null
+    private var gradientImage: WritableImage = DummyWritableImage
+    private var gradientDoubleImage: DoubleImage = DummyDoubleImage
     private var gradientImageView: ImageView? = null
-    private var outputImage: WritableImage? = null
-    private var outputDoubleImage: DoubleImage? = null
+    private var outputImage: WritableImage = DummyWritableImage
+    private var outputDoubleImage: DoubleImage = DummyDoubleImage
     private var outputImageView: ImageView? = null
-    private var deltaImage: WritableImage? = null
-    private var deltaDoubleImage: DoubleImage? = null
+    private var deltaImage: WritableImage = DummyWritableImage
+    private var deltaDoubleImage: DoubleImage = DummyDoubleImage
     private var deltaImageView: ImageView? = null
-    private var zoomInputImage: WritableImage? = null
-    private var zoomInputDoubleImage: DoubleImage? = null
+    private var zoomInputImage: WritableImage = DummyWritableImage
+    private var zoomInputDoubleImage: DoubleImage = DummyDoubleImage
     private var zoomInputImageView: ImageView? = null
-    private var zoomOutputImage: WritableImage? = null
-    private var zoomOutputDoubleImage: DoubleImage? = null
+    private var zoomOutputImage: WritableImage = DummyWritableImage
+    private var zoomOutputDoubleImage: DoubleImage = DummyDoubleImage
     private var zoomOutputImageView: ImageView? = null
-    private var zoomGradientImage: WritableImage? = null
-    private var zoomGradientDoubleImage: DoubleImage? = null
+    private var zoomGradientImage: WritableImage = DummyWritableImage
+    private var zoomGradientDoubleImage: DoubleImage = DummyDoubleImage
     private var zoomGradientImageView: ImageView? = null
-    private var zoomDeltaImage: WritableImage? = null
-    private var zoomDeltaDoubleImage: DoubleImage? = null
+    private var zoomDeltaImage: WritableImage = DummyWritableImage
+    private var zoomDeltaDoubleImage: DoubleImage = DummyDoubleImage
     private var zoomDeltaImageView: ImageView? = null
+
     private val fixPoints = FXCollections.observableArrayList<FixPoint>()
+
     private var sampleRadiusSpinner: Spinner<Number>? = null
     private var colorCurveCanvas: Canvas? = null
     private val inputHistogram = Histogram(ColorModel.RGB, HISTOGRAM_WIDTH - 1)
@@ -115,6 +118,7 @@ class AstrophotographyApp : Application() {
     private var zoomInputHistogramCanvas: Canvas? = null
     private val zoomOutputHistogram = Histogram(ColorModel.RGB, HISTOGRAM_WIDTH - 1)
     private var zoomOutputHistogramCanvas: Canvas? = null
+
     override fun start(primaryStage: Stage) {
         val root = Group()
         val scene = Scene(root)
@@ -150,11 +154,11 @@ class AstrophotographyApp : Application() {
                     + "Switching away from the input tab will take a while to calculate the image."))
             imageTabPane.selectionModel.selectedItemProperty().addListener { _, oldValue: Tab, _ ->
                 if (oldValue === inputTab) {
-                    removeGradient(inputDoubleImage!!, gradientDoubleImage!!, outputDoubleImage!!)
+                    removeGradient(inputDoubleImage, gradientDoubleImage, outputDoubleImage)
                     calculateDeltaImage(
-                            inputDoubleImage!!,
-                            gradientDoubleImage!!,
-                            deltaDoubleImage!!,
+                            inputDoubleImage,
+                            gradientDoubleImage,
+                            deltaDoubleImage,
                             zoomDeltaSampleChannelProperty.get().colorModel,
                             zoomDeltaSampleChannelProperty.get().sampleIndex,
                             zoomDeltaSampleFactorProperty.get())
@@ -191,6 +195,8 @@ class AstrophotographyApp : Application() {
         zoomDeltaSampleFactorProperty.addListener { _, _, _ -> updateZoomDelta() }
 
         initializeValues()
+
+        loadImage(DummyDoubleImage)
     }
 
     private fun removeGradient(input: DoubleImage, gradient: DoubleImage, output: DoubleImage) {
@@ -225,15 +231,15 @@ class AstrophotographyApp : Application() {
             val circle = Circle(3.0)
             circle.fill = Color.TRANSPARENT
             circle.strokeProperty().bind(fixPointColorProperty)
-            val x = fixPoint.x / inputImage!!.width * inputImageView!!.boundsInLocal.width
-            val y = fixPoint.y / inputImage!!.height * inputImageView!!.boundsInLocal.height
+            val x = fixPoint.x / inputImage.width * inputImageView!!.boundsInLocal.width
+            val y = fixPoint.y / inputImage.height * inputImageView!!.boundsInLocal.height
             circle.centerX = x
             circle.centerY = y
             inputDecorationsPane!!.children.add(circle)
         }
         gradientInterpolationFilter.setFixPoints(
                 toPointList(fixPoints),
-                inputDoubleImage!!,
+                inputDoubleImage,
                 sampleRadiusProperty.get())
         updateZoom()
     }
@@ -330,8 +336,8 @@ class AstrophotographyApp : Application() {
     private fun saveImage(outputFile: File) {
         val inputImage = inputDoubleImage
         //DoubleImage inputImage = ImageReader.read(inputFile, ImageQuality.High);
-        val outputImage = createOutputImage(inputImage!!)
-        removeGradient(inputImage, gradientDoubleImage!!, outputImage)
+        val outputImage = createOutputImage(inputImage)
+        removeGradient(inputImage, gradientDoubleImage, outputImage)
         ImageWriter.write(outputImage, outputFile)
         saveProperties(toPropertiesFile(outputFile))
     }
@@ -407,27 +413,31 @@ class AstrophotographyApp : Application() {
 
     @Throws(IOException::class)
     private fun loadImage(file: File) {
-        inputDoubleImage = ImageReader.read(file, ImageQuality.High)
-        val width = inputDoubleImage!!.width
-        val height = inputDoubleImage!!.height
+        loadImage(ImageReader.read(file, ImageQuality.High))
+    }
+
+    private fun loadImage(image: DoubleImage) {
+        inputDoubleImage = image
+        val width = inputDoubleImage.width
+        val height = inputDoubleImage.height
         inputImage = WritableImage(width, height)
         val rgb = DoubleArray(3)
-        val pw = inputImage!!.pixelWriter
+        val pw = inputImage.pixelWriter
         for (x in 0 until width) {
             for (y in 0 until height) {
-                inputDoubleImage!!.getPixel(x, y, ColorModel.RGB, rgb)
+                inputDoubleImage.getPixel(x, y, ColorModel.RGB, rgb)
                 pw.setArgb(x, y, ColorUtil.toIntARGB(rgb))
             }
         }
         inputImageView!!.image = inputImage
         gradientImage = WritableImage(width, height)
-        gradientDoubleImage = WriteThroughArrayDoubleImage(JavaFXWritableDoubleImage(gradientImage!!), ColorModel.RGB)
+        gradientDoubleImage = WriteThroughArrayDoubleImage(JavaFXWritableDoubleImage(gradientImage), ColorModel.RGB)
         gradientImageView!!.image = gradientImage
         outputImage = WritableImage(width, height)
-        outputDoubleImage = WriteThroughArrayDoubleImage(JavaFXWritableDoubleImage(outputImage!!), ColorModel.RGB)
+        outputDoubleImage = WriteThroughArrayDoubleImage(JavaFXWritableDoubleImage(outputImage), ColorModel.RGB)
         outputImageView!!.image = outputImage
         deltaImage = WritableImage(width, height)
-        deltaDoubleImage = WriteThroughArrayDoubleImage(JavaFXWritableDoubleImage(deltaImage!!), ColorModel.RGB)
+        deltaDoubleImage = WriteThroughArrayDoubleImage(JavaFXWritableDoubleImage(deltaImage), ColorModel.RGB)
         deltaImageView!!.image = deltaImage
         medianAllColor = null
         averageAllColor = null
@@ -521,14 +531,11 @@ class AstrophotographyApp : Application() {
     private fun updateZoom(zoomX: Int = zoomCenterXProperty.get(), zoomY: Int = zoomCenterYProperty.get()) {
         val zoomOffsetX = zoomX - ZOOM_WIDTH / 2
         val zoomOffsetY = zoomY - ZOOM_HEIGHT / 2
-        if (inputDoubleImage == null) {
-            return
-        }
         val rgb = DoubleArray(3)
-        ColorUtil.toIntARGB(inputDoubleImage!!.getPixel(zoomX, zoomY, ColorModel.RGB, rgb))
+        ColorUtil.toIntARGB(inputDoubleImage.getPixel(zoomX, zoomY, ColorModel.RGB, rgb))
         samplePixelColorProperty.set(Color(rgb[ColorModel.RGB.R], rgb[ColorModel.RGB.G], rgb[ColorModel.RGB.B], 1.0))
         val sampleRadius1 = sampleRadiusProperty.get()
-        inputDoubleImage!!.averagePixel(
+        inputDoubleImage.averagePixel(
                 zoomX - sampleRadius1,
                 zoomY - sampleRadius1,
                 sampleRadius1 + sampleRadius1 + 1,
@@ -537,21 +544,21 @@ class AstrophotographyApp : Application() {
                 rgb
         )
         sampleAverageColorProperty.set(Color(rgb[ColorModel.RGB.R], rgb[ColorModel.RGB.G], rgb[ColorModel.RGB.B], 1.0))
-        zoomGradientDoubleImage!!.getPixel(ZOOM_WIDTH / 2, ZOOM_HEIGHT / 2, ColorModel.RGB, rgb)
+        zoomGradientDoubleImage.getPixel(ZOOM_WIDTH / 2, ZOOM_HEIGHT / 2, ColorModel.RGB, rgb)
         gradientPixelColorProperty.set(Color(rgb[ColorModel.RGB.R], rgb[ColorModel.RGB.G], rgb[ColorModel.RGB.B], 1.0))
-        zoomInputDoubleImage!!.setPixels(
+        zoomInputDoubleImage.setPixels(
                 zoomOffsetX,
                 zoomOffsetY,
-                inputDoubleImage!!,
+                inputDoubleImage,
                 0,
                 0,
                 ZOOM_WIDTH,
                 ZOOM_HEIGHT,
                 ColorModel.RGB, doubleArrayOf(0.0, 0.0, 0.0))
         removeGradient(
-                zoomInputDoubleImage!!,
-                zoomGradientDoubleImage!!,
-                zoomOutputDoubleImage!!)
+                zoomInputDoubleImage,
+                zoomGradientDoubleImage,
+                zoomOutputDoubleImage)
         updateColorCurve()
         updateZoomHistogram()
         updateZoomDelta()
@@ -559,11 +566,11 @@ class AstrophotographyApp : Application() {
 
     private fun updateColorCurve() {
         val subtractor = sampleSubtractionStrategyProperty.get().operation
-        drawColorCurve(colorCurveCanvas, subtractor, gradientPixelColorProperty.get())
+        drawColorCurve(colorCurveCanvas!!, subtractor, gradientPixelColorProperty.get())
     }
 
-    private fun drawColorCurve(canvas: Canvas?, subtractor: ImageOperation?, gradientColor: Color) {
-        val gc = canvas!!.graphicsContext2D
+    private fun drawColorCurve(canvas: Canvas, subtractor: ImageOperation, gradientColor: Color) {
+        val gc = canvas.graphicsContext2D
         val canvasWidth = canvas.width
         val canvasHeight = canvas.height
         val inset = 2.0
@@ -591,7 +598,7 @@ class AstrophotographyApp : Application() {
             color[ColorModel.RGB.G] = gradientColor.green
             color[ColorModel.RGB.B] = gradientColor.blue
             gradient.setPixel(0, 0, ColorModel.RGB, color)
-            subtractor!!.operation(input, gradient, output)
+            subtractor.operation(input, gradient, output)
             output.getPixel(0, 0, ColorModel.RGB, color)
             val yR = color[ColorModel.RGB.R]
             val yG = color[ColorModel.RGB.G]
@@ -617,14 +624,14 @@ class AstrophotographyApp : Application() {
     }
 
     private fun updateInputHistogram() {
-        inputHistogram.sampleImage(inputDoubleImage!!)
+        inputHistogram.sampleImage(inputDoubleImage)
         drawHistogram(inputHistogramCanvas, inputHistogram)
     }
 
     private fun updateZoomHistogram() {
-        zoomInputHistogram.sampleImage(zoomInputDoubleImage!!)
+        zoomInputHistogram.sampleImage(zoomInputDoubleImage)
         drawHistogram(zoomInputHistogramCanvas, zoomInputHistogram)
-        zoomOutputHistogram.sampleImage(zoomOutputDoubleImage!!)
+        zoomOutputHistogram.sampleImage(zoomOutputDoubleImage)
         drawHistogram(zoomOutputHistogramCanvas, zoomOutputHistogram)
     }
 
@@ -656,9 +663,9 @@ class AstrophotographyApp : Application() {
 
     private fun updateZoomDelta() {
         calculateDeltaImage(
-                zoomInputDoubleImage!!,
-                zoomGradientDoubleImage!!,
-                zoomDeltaDoubleImage!!,
+                zoomInputDoubleImage,
+                zoomGradientDoubleImage,
+                zoomDeltaDoubleImage,
                 zoomDeltaSampleChannelProperty.get().colorModel,
                 zoomDeltaSampleChannelProperty.get().sampleIndex,
                 zoomDeltaSampleFactorProperty.get())
@@ -695,19 +702,19 @@ class AstrophotographyApp : Application() {
         val mainBox = HBox(SPACING)
         zoomInputImage = WritableImage(ZOOM_WIDTH, ZOOM_HEIGHT)
         zoomInputDoubleImage = if (ACCURATE_PREVIEW) {
-            WriteThroughArrayDoubleImage(JavaFXWritableDoubleImage(zoomInputImage!!), ColorModel.RGB)
+            WriteThroughArrayDoubleImage(JavaFXWritableDoubleImage(zoomInputImage), ColorModel.RGB)
         } else {
-            JavaFXWritableDoubleImage(zoomInputImage!!)
+            JavaFXWritableDoubleImage(zoomInputImage)
         }
         zoomInputImageView = ImageView(zoomInputImage)
         zoomOutputImage = WritableImage(ZOOM_WIDTH, ZOOM_HEIGHT)
-        zoomOutputDoubleImage = WriteThroughArrayDoubleImage(JavaFXWritableDoubleImage(zoomOutputImage!!), ColorModel.RGB)
+        zoomOutputDoubleImage = WriteThroughArrayDoubleImage(JavaFXWritableDoubleImage(zoomOutputImage), ColorModel.RGB)
         zoomOutputImageView = ImageView(zoomOutputImage)
         zoomGradientImage = WritableImage(ZOOM_WIDTH, ZOOM_HEIGHT)
-        zoomGradientDoubleImage = WriteThroughArrayDoubleImage(JavaFXWritableDoubleImage(zoomGradientImage!!), ColorModel.RGB)
+        zoomGradientDoubleImage = WriteThroughArrayDoubleImage(JavaFXWritableDoubleImage(zoomGradientImage), ColorModel.RGB)
         zoomGradientImageView = ImageView(zoomGradientImage)
         zoomDeltaImage = WritableImage(ZOOM_WIDTH, ZOOM_HEIGHT)
-        zoomDeltaDoubleImage = JavaFXWritableDoubleImage(zoomDeltaImage!!)
+        zoomDeltaDoubleImage = JavaFXWritableDoubleImage(zoomDeltaImage)
         zoomDeltaImageView = ImageView(zoomDeltaImage)
         run {
             val mainGridPane = GridPane()
@@ -817,11 +824,11 @@ class AstrophotographyApp : Application() {
                             button.onAction = EventHandler {
                                 updateSingleGlowColor {
                                     if (medianAllColor == null) {
-                                        medianAllColor = toJavafxColor(inputDoubleImage!!.medianPixel(ColorModel.RGB))
+                                        medianAllColor = toJavafxColor(inputDoubleImage.medianPixel(ColorModel.RGB))
                                     }
                                     medianAllColor!!
                                 }
-                                singleGlowColorDescriptionProperty.set("Median All " + inputDoubleImage!!.width + "x" + inputDoubleImage!!.height)
+                                singleGlowColorDescriptionProperty.set("Median All " + inputDoubleImage.width + "x" + inputDoubleImage.height)
                             }
                         }
                         run {
@@ -831,11 +838,11 @@ class AstrophotographyApp : Application() {
                             button.onAction = EventHandler {
                                 updateSingleGlowColor {
                                     if (averageAllColor == null) {
-                                        averageAllColor = toJavafxColor(inputDoubleImage!!.averagePixel(ColorModel.RGB))
+                                        averageAllColor = toJavafxColor(inputDoubleImage.averagePixel(ColorModel.RGB))
                                     }
                                     averageAllColor!!
                                 }
-                                singleGlowColorDescriptionProperty.set("Average All " + inputDoubleImage!!.width + "x" + inputDoubleImage!!.height)
+                                singleGlowColorDescriptionProperty.set("Average All " + inputDoubleImage.width + "x" + inputDoubleImage.height)
                             }
                         }
                         run {
@@ -845,11 +852,11 @@ class AstrophotographyApp : Application() {
                             button.onAction = EventHandler {
                                 updateSingleGlowColor {
                                     if (darkestAllColor == null) {
-                                        darkestAllColor = toJavafxColor(inputDoubleImage!!.darkestPixel())
+                                        darkestAllColor = toJavafxColor(inputDoubleImage.darkestPixel())
                                     }
                                     darkestAllColor!!
                                 }
-                                singleGlowColorDescriptionProperty.set("Darkest All " + inputDoubleImage!!.width + "x" + inputDoubleImage!!.height)
+                                singleGlowColorDescriptionProperty.set("Darkest All " + inputDoubleImage.width + "x" + inputDoubleImage.height)
                             }
                         }
                         glowSingleColorRowIndex++
@@ -862,7 +869,7 @@ class AstrophotographyApp : Application() {
                             buttonBox.children.add(button)
                             tooltip(button, "Finds the median color of the pixels in the zoom input image.")
                             button.onAction = EventHandler {
-                                updateSingleGlowColor { toJavafxColor(zoomInputDoubleImage!!.medianPixel()) }
+                                updateSingleGlowColor { toJavafxColor(zoomInputDoubleImage.medianPixel()) }
                                 val width = ZOOM_WIDTH
                                 val height = ZOOM_HEIGHT
                                 val x = zoomCenterXProperty.get() - width / 2
@@ -875,7 +882,7 @@ class AstrophotographyApp : Application() {
                             buttonBox.children.add(button)
                             tooltip(button, "Finds the average color of the pixels in the zoom input image.")
                             button.onAction = EventHandler {
-                                updateSingleGlowColor { toJavafxColor(zoomInputDoubleImage!!.averagePixel()) }
+                                updateSingleGlowColor { toJavafxColor(zoomInputDoubleImage.averagePixel()) }
                                 val width: Int = ZOOM_WIDTH
                                 val height: Int = ZOOM_HEIGHT
                                 val x: Int = zoomCenterXProperty.get() - width / 2
@@ -888,7 +895,7 @@ class AstrophotographyApp : Application() {
                             buttonBox.children.add(button)
                             tooltip(button, "Finds the darkest color of the pixels in the zoom input image.")
                             button.onAction = EventHandler {
-                                updateSingleGlowColor { toJavafxColor(zoomInputDoubleImage!!.darkestPixel()) }
+                                updateSingleGlowColor { toJavafxColor(zoomInputDoubleImage.darkestPixel()) }
                                 val width: Int = ZOOM_WIDTH
                                 val height: Int = ZOOM_HEIGHT
                                 val x: Int = zoomCenterXProperty.get() - width / 2
@@ -909,7 +916,7 @@ class AstrophotographyApp : Application() {
                                 val zx = ZOOM_WIDTH / 2
                                 val zy = ZOOM_HEIGHT / 2
                                 val r = sampleRadiusProperty.get()
-                                updateSingleGlowColor { toJavafxColor(zoomInputDoubleImage!!.croppedImage(zx - r, zy - r, r + r + 1, r + r + 1).medianPixel()) }
+                                updateSingleGlowColor { toJavafxColor(zoomInputDoubleImage.croppedImage(zx - r, zy - r, r + r + 1, r + r + 1).medianPixel()) }
                                 val width = r + r + 1
                                 val height = r + r + 1
                                 val x = zoomCenterXProperty.get() - width / 2
@@ -925,7 +932,7 @@ class AstrophotographyApp : Application() {
                                 val zx: Int = ZOOM_WIDTH / 2
                                 val zy: Int = ZOOM_HEIGHT / 2
                                 val r: Int = sampleRadiusProperty.get()
-                                updateSingleGlowColor { toJavafxColor(zoomInputDoubleImage!!.croppedImage(zx - r, zy - r, r + r + 1, r + r + 1).averagePixel()) }
+                                updateSingleGlowColor { toJavafxColor(zoomInputDoubleImage.croppedImage(zx - r, zy - r, r + r + 1, r + r + 1).averagePixel()) }
                                 val width: Int = r + r + 1
                                 val height: Int = r + r + 1
                                 val x: Int = zoomCenterXProperty.get() - width / 2
@@ -941,7 +948,7 @@ class AstrophotographyApp : Application() {
                                 val zx: Int = ZOOM_WIDTH / 2
                                 val zy: Int = ZOOM_HEIGHT / 2
                                 val r: Int = sampleRadiusProperty.get()
-                                updateSingleGlowColor { toJavafxColor(zoomInputDoubleImage!!.croppedImage(zx - r, zy - r, r + r + 1, r + r + 1).darkestPixel()) }
+                                updateSingleGlowColor { toJavafxColor(zoomInputDoubleImage.croppedImage(zx - r, zy - r, r + r + 1, r + r + 1).darkestPixel()) }
                                 val width: Int = r + r + 1
                                 val height: Int = r + r + 1
                                 val x: Int = zoomCenterXProperty.get() - width / 2
@@ -1180,7 +1187,7 @@ class AstrophotographyApp : Application() {
 
     private fun addFixPoint(x: Int, y: Int) {
         val sampleRadius = sampleRadiusProperty.get()
-        val color = inputDoubleImage!!.averagePixel(
+        val color = inputDoubleImage.averagePixel(
                 x - sampleRadius,
                 y - sampleRadius,
                 sampleRadius + sampleRadius + 1,
@@ -1200,10 +1207,10 @@ class AstrophotographyApp : Application() {
     }
 
     private fun updateZoomRectangle(rectangle: Rectangle) {
-        val width = ZOOM_WIDTH / inputImage!!.width * inputImageView!!.boundsInLocal.width
-        val height = ZOOM_HEIGHT / inputImage!!.height * inputImageView!!.boundsInLocal.height
-        val x = zoomCenterXProperty.get() / inputImage!!.width * inputImageView!!.boundsInLocal.width
-        val y = zoomCenterYProperty.get() / inputImage!!.height * inputImageView!!.boundsInLocal.height
+        val width = ZOOM_WIDTH / inputImage.width * inputImageView!!.boundsInLocal.width
+        val height = ZOOM_HEIGHT / inputImage.height * inputImageView!!.boundsInLocal.height
+        val x = zoomCenterXProperty.get() / inputImage.width * inputImageView!!.boundsInLocal.width
+        val y = zoomCenterYProperty.get() / inputImage.height * inputImageView!!.boundsInLocal.height
         rectangle.x = x - width / 2
         rectangle.y = y - height / 2
         rectangle.width = width
@@ -1267,8 +1274,8 @@ class AstrophotographyApp : Application() {
             var zoomY = zoomCenterYProperty.get() + deltaY.toInt()
             zoomX = max(zoomX, 0)
             zoomY = max(zoomY, 0)
-            zoomX = min(zoomX, inputImage!!.width.toInt() - 1)
-            zoomY = min(zoomY, inputImage!!.height.toInt() - 1)
+            zoomX = min(zoomX, inputImage.width.toInt() - 1)
+            zoomY = min(zoomY, inputImage.height.toInt() - 1)
             zoomCenterXProperty.set(zoomX)
             zoomCenterYProperty.set(zoomY)
             updateZoom(zoomX, zoomY)
@@ -1318,6 +1325,10 @@ class AstrophotographyApp : Application() {
         private val RED_SEMI = Color(1.0, 0.0, 0.0, 0.8)
         private val GREEN_SEMI = Color(0.0, 1.0, 0.0, 0.8)
         private val BLUE_SEMI = Color(0.0, 0.0, 1.0, 0.8)
+
+        private val DummyWritableImage = WritableImage(ZOOM_WIDTH, ZOOM_HEIGHT)
+        private val DummyDoubleImage = ArrayDoubleImage(ZOOM_WIDTH, ZOOM_HEIGHT, ColorModel.RGB)
+
 
         @JvmStatic
         fun main(args: Array<String>) {

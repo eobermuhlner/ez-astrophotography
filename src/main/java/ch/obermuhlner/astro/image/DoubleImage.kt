@@ -23,7 +23,7 @@ interface DoubleImage {
         val yy = max(0, min(height - 1, y))
         val result = getNativePixel(xx, yy, color)
         if (colorModel !== this.colorModel) {
-            ColorUtil.convert(result, colorModel, result, this.colorModel)
+            ColorUtil.convert(colorModel, result, this.colorModel, result)
         }
         return result
     }
@@ -33,12 +33,12 @@ interface DoubleImage {
     }
 
     fun setPixel(x: Int, y: Int, colorModel: ColorModel, color: DoubleArray) {
-        var color = color
         if (isInside(x, y)) {
+            var nativeColor = color
             if (colorModel !== this.colorModel) {
-                color = ColorUtil.convert(color, colorModel, null, this.colorModel)
+                nativeColor = ColorUtil.convert(colorModel, nativeColor, this.colorModel)
             }
-            setNativePixel(x, y, color)
+            setNativePixel(x, y, nativeColor)
         }
     }
 
@@ -146,7 +146,7 @@ interface DoubleImage {
             color[1] = data[nHalf][ColorModel.HSV.S]
             color[2] = data[nHalf][ColorModel.HSV.V]
         }
-        ColorUtil.convert(color, ColorModel.HSV, color, colorModel)
+        ColorUtil.convert(ColorModel.HSV, color, colorModel, color)
         return color
     }
 

@@ -151,11 +151,14 @@ object Astrophotography {
     @Throws(IOException::class)
     private fun runTest() {
         val input = loadImage("images/Autosave001.tif")
-        var gradient = pseudoMedianFilter(input, 5)
-        gradient = gaussianBlur(input, 100)
-        saveImage(gradient, "images/TestGradient.png")
-        val output = subtractLinear(input, gradient)
-        saveImage(output, "images/TestOutput.png")
+        val nostars1 = pseudoMedianFilter(input, 20)
+        saveImage(nostars1, "images/TestNoStars1.png")
+        val nostars2 = gaussianBlur(nostars1, 2)
+        saveImage(nostars2, "images/TestNoStars2.png")
+        val stars1 = subtractLinear(input, nostars1)
+        saveImage(stars1, "images/TestStars1.png")
+        val stars2 = subtractLinear(input, nostars2)
+        saveImage(stars2, "images/TestStars2.png")
     }
 
     @Throws(ScriptException::class)
@@ -185,8 +188,8 @@ object Astrophotography {
         return GaussianBlurFilter(radius, ColorModel.RGB).filter(image)
     }
 
-    fun medianBlur(image: DoubleImage, radius: Int): DoubleImage {
-        return MedianFilter(radius, ColorModel.RGB).filter(image)
+    fun medianFilter(image: DoubleImage, radius: Int): DoubleImage {
+        return MedianFilter(radius).filter(image)
     }
 
     fun horizontalMedianFilter(image: DoubleImage, radius: Int): DoubleImage {

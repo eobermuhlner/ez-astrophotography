@@ -1,10 +1,14 @@
 package ch.obermuhlner.astro.image.color
 
+import kotlin.math.floor
+import kotlin.math.max
+import kotlin.math.min
+
 object ColorUtil {
     fun toIntRGB(rgb: DoubleArray): Int {
-        val rr = Math.max(Math.min((rgb[ColorModel.RGB.R] * 256).toInt(), 255), 0)
-        val gg = Math.max(Math.min((rgb[ColorModel.RGB.G] * 256).toInt(), 255), 0)
-        val bb = Math.max(Math.min((rgb[ColorModel.RGB.B] * 256).toInt(), 255), 0)
+        val rr = max(min((rgb[ColorModel.RGB.R] * 256).toInt(), 255), 0)
+        val gg = max(min((rgb[ColorModel.RGB.G] * 256).toInt(), 255), 0)
+        val bb = max(min((rgb[ColorModel.RGB.B] * 256).toInt(), 255), 0)
         return (rr * 0x100 + gg) * 0x100 + bb
     }
 
@@ -67,8 +71,8 @@ object ColorUtil {
             g = b
             r = g
         } else {
-            val hh = (h - Math.floor(h)) * 6.0
-            val f = hh - Math.floor(hh)
+            val hh = (h - floor(h)) * 6.0
+            val f = hh - floor(hh)
             val p = v * (1.0 - s)
             val q = v * (1.0 - s * f)
             val t = v * (1.0 - s * (1.0 - f))
@@ -129,11 +133,7 @@ object ColorUtil {
         return delta
     }
 
-    fun convert(source: DoubleArray, sourceModel: ColorModel, target: DoubleArray?, targetModel: ColorModel): DoubleArray {
-        var target = target
-        if (target == null) {
-            target = DoubleArray(3)
-        }
+    fun convert(sourceModel: ColorModel, source: DoubleArray, targetModel: ColorModel, target: DoubleArray = DoubleArray(3)): DoubleArray {
         if (sourceModel === ColorModel.RGB) {
             if (targetModel === ColorModel.HSV) {
                 convertRGBtoHSV(source, target)

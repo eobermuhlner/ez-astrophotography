@@ -1,6 +1,7 @@
 package ch.obermuhlner.astro.gradient
 
 import java.util.*
+import kotlin.math.sqrt
 
 class Point constructor(val x: Int, val y: Int) {
     fun distanceSquare(other: Point?): Double {
@@ -10,7 +11,7 @@ class Point constructor(val x: Int, val y: Int) {
     }
 
     fun distance(other: Point?): Double {
-        return Math.sqrt(distanceSquare(other))
+        return sqrt(distanceSquare(other))
     }
 
     override fun equals(other: Any?): Boolean {

@@ -1,5 +1,7 @@
 package ch.obermuhlner.astro.gradient.math
 
+import kotlin.math.hypot
+
 /**
  * https://gist.github.com/lecho/7627739
  */
@@ -110,7 +112,7 @@ class SplineInterpolator private constructor(private val mX: List<Double>, priva
                 } else {
                     val a: Double = m[i] / d[i]
                     val b: Double = m[i + 1] / d[i]
-                    val h: Double = Math.hypot(a, b)
+                    val h: Double = hypot(a, b)
                     if (h > 3) {
                         val t: Double = 3 / h
                         m[i] = t * a * d[i]

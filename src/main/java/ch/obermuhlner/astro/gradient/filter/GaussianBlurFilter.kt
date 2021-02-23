@@ -3,6 +3,10 @@ package ch.obermuhlner.astro.gradient.filter
 import ch.obermuhlner.astro.image.ArrayDoubleImage
 import ch.obermuhlner.astro.image.DoubleImage
 import ch.obermuhlner.astro.image.color.ColorModel
+import kotlin.math.ceil
+import kotlin.math.floor
+import kotlin.math.roundToLong
+import kotlin.math.sqrt
 
 // http://blog.ivank.net/fastest-gaussian-blur.html
 class GaussianBlurFilter constructor(private val radius: Int, private val model: ColorModel) : Filter {
@@ -14,7 +18,7 @@ class GaussianBlurFilter constructor(private val radius: Int, private val model:
         temp.source.setPixels(source, model, null)
         val boxSizes: DoubleArray = boxSizesForGauss(radius.toDouble(), 3)
         for (boxSize: Double in boxSizes) {
-            val boxRadius: Int = (Math.ceil((boxSize - 1) / 2) + 0.5).toInt()
+            val boxRadius: Int = (ceil((boxSize - 1) / 2) + 0.5).toInt()
             boxBlur(temp.source, temp.target, width, height, boxRadius)
             temp.swap()
         }
@@ -182,12 +186,12 @@ class GaussianBlurFilter constructor(private val radius: Int, private val model:
     }
 
     private fun boxSizesForGauss(sigma: Double, n: Int): DoubleArray {
-        val wIdeal = Math.sqrt((12 * sigma * sigma / n) + 1)
-        var wl = Math.floor(wIdeal)
+        val wIdeal = sqrt((12 * sigma * sigma / n) + 1)
+        var wl = floor(wIdeal)
         if (wl % 2 == 0.0) wl--
         val wu: Double = wl + 2
         val mIdeal: Double = ((12 * sigma * sigma) - (n * wl * wl) - (4 * n * wl) - (3 * n)) / (-4 * wl - 4)
-        val m: Long = Math.round(mIdeal)
+        val m: Long = mIdeal.roundToLong()
         val sizes = DoubleArray(n)
         for (i in 0 until n) {
             sizes[i] = if (i < m) wl else wu

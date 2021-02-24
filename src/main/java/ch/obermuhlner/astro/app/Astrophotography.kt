@@ -2,7 +2,6 @@ package ch.obermuhlner.astro.app
 
 import ch.obermuhlner.astro.gradient.Point
 import ch.obermuhlner.astro.gradient.filter.*
-import ch.obermuhlner.astro.gradient.operation.ImageOperation
 import ch.obermuhlner.astro.gradient.operation.SubtractImageOperation
 import ch.obermuhlner.astro.gradient.operation.SubtractLinearImageOperation
 import ch.obermuhlner.astro.gradient.operation.SubtractSplineImageOperation
@@ -14,8 +13,6 @@ import java.io.File
 import java.io.IOException
 import java.nio.file.Files
 import java.util.*
-import java.util.concurrent.atomic.AtomicInteger
-import java.util.concurrent.atomic.AtomicReference
 import java.util.regex.Pattern
 import javax.script.ScriptEngineManager
 import javax.script.ScriptException
@@ -48,12 +45,12 @@ object Astrophotography {
     @Throws(IOException::class)
     @JvmStatic
     fun main(args: Array<String>) {
-        val parser = ArgParser(arrayOf(
-                "-h",
-                "-v",
-                "--blur",
-                "images/Autosave001.tif"
-        ))
+        val parser = ArgParser(args)
+//        val parser = ArgParser(arrayOf(
+//                "-v",
+//                "--blur",
+//                "images/Autosave001.tif"
+//        ))
 
         val verbose by parser.flagging(
                 "-v", "--verbose",
@@ -77,9 +74,13 @@ object Astrophotography {
                 "--interpolation-power",
                 help = "interpolation power") { toDouble() }.default(3.0)
 
-        val color by parser.storing(
-                "--color",
-                help = "color") { toColor(this) }.default(DoubleArray(3))
+        val despeckleRadius by parser.storing(
+                "--despeckle-radius",
+                help = "despeckle radius") { toInt() }.default(5)
+
+        val blurRadius by parser.storing(
+                "--blur-radius",
+                help = "blur radius") { toInt() }.default(100)
 
         val singleColorStrategy by parser.mapping(
                 "--median-color" to SingleColorStrategy.Median,
@@ -105,7 +106,8 @@ object Astrophotography {
             println("points: $points")
             println("sampleRadius: $sampleRadius")
             println("interpolationPower: $interpolationPower")
-            println("color: $color")
+            println("despeckleRadius: $despeckleRadius")
+            println("blurRadius: $blurRadius")
             println("singleColorStrategy: $singleColorStrategy")
             println("sources: $sources")
         }
@@ -115,26 +117,37 @@ object Astrophotography {
             val sourceFile = File(source)
             val inputImage = ImageReader.read(sourceFile, ImageQuality.High)
 
-            println("Processing $source")
-            val glowFilter = when (glowStrategy) {
+            println("Processing $source with $glowStrategy")
+            val gradientImage = when (glowStrategy) {
                 GlowStrategy.SingleColor -> {
-                    GaussianBlurFilter(5, ColorModel.RGB)
+                    val color = pickColor(inputImage, singleColorStrategy)
+                    println("Picking $singleColorStrategy: ${color.contentToString()}")
+                    val colorImage = ArrayDoubleImage(inputImage.width, inputImage.height, ColorModel.RGB)
+                    colorImage.setPixels(color)
+                    colorImage
                 }
                 GlowStrategy.Blur -> {
-                    GaussianBlurFilter(100, ColorModel.RGB)
+                    println("Despeckling $despeckleRadius and blurring $blurRadius pixels")
+                    val despeckledImage = PseudoMedianFilter(despeckleRadius, ColorModel.RGB).filter(inputImage)
+                    GaussianBlurFilter(blurRadius, ColorModel.RGB).filter(despeckledImage)
                 }
                 GlowStrategy.Gradient -> {
                     val gradientFilter = GradientInterpolationFilter(interpolationPower)
                     if (points.isEmpty()) {
+                        println("Interpolating gradient between automatically determined points")
                         autoSetFixPoints(gradientFilter, inputImage)
                     } else {
-                        gradientFilter.setFixPoints(correctFixPoints(points, inputImage), inputImage, sampleRadius)
+                        val fixPoints = correctFixPoints(points, inputImage)
+                        println("Interpolating gradient between $fixPoints")
+                        gradientFilter.setFixPoints(fixPoints, inputImage, sampleRadius)
                     }
-                    gradientFilter
+                    gradientFilter.filter(inputImage)
                 }
             }
 
-            val gradientImage = glowFilter.filter(inputImage)
+            val gradientFile = File(sourceFile.parent, "gradient_" + sourceFile.name)
+            println("Saving $gradientFile")
+            ImageWriter.write(gradientImage, gradientFile)
 
             println("Subtracting calculated glow from input image")
             val subtractOperation = when (subtractStrategy) {
@@ -154,6 +167,20 @@ object Astrophotography {
             val outputFile = File(sourceFile.parent, "output_" + sourceFile.name)
             println("Saving $outputFile")
             ImageWriter.write(outputImage, outputFile)
+        }
+    }
+
+    private fun pickColor(image: DoubleImage, singleColorStrategy: SingleColorStrategy): DoubleArray {
+        return when (singleColorStrategy) {
+            SingleColorStrategy.Median -> {
+                image.medianPixel()
+            }
+            SingleColorStrategy.Average -> {
+                image.averagePixel()
+            }
+            SingleColorStrategy.Darkest -> {
+                image.darkestPixel()
+            }
         }
     }
 
@@ -177,15 +204,6 @@ object Astrophotography {
                 listOf(color1, color2, color3))
     }
 
-    private fun loadScript(file: File): Array<String> {
-        return try {
-            val script = Files.readString(file.toPath())
-            script.split("\\s+".toRegex()).toTypedArray()
-        } catch (e: IOException) {
-            throw RuntimeException(e)
-        }
-    }
-
     private fun correctFixPoints(fixPoints: List<Point>, inputImage: DoubleImage): List<Point> {
         val result: MutableList<Point> = ArrayList()
         for (fixPoint in fixPoints) {
@@ -204,11 +222,6 @@ object Astrophotography {
     private fun toPoint(string: String): Point {
         val split = string.split(Pattern.quote(",").toRegex()).toTypedArray()
         return Point(split[0].toInt(), split[1].toInt())
-    }
-
-    private fun toColor(string: String): DoubleArray {
-        val split = string.split(',')
-        return DoubleArray(3) { split[it].toDouble() }
     }
 
     @Throws(IOException::class)

@@ -4,6 +4,7 @@ import ch.obermuhlner.astro.gradient.Point
 import ch.obermuhlner.astro.gradient.analysis.Histogram
 import ch.obermuhlner.astro.gradient.filter.GaussianBlurFilter
 import ch.obermuhlner.astro.gradient.filter.GradientInterpolationFilter
+import ch.obermuhlner.astro.gradient.filter.PseudoMedianFilter
 import ch.obermuhlner.astro.gradient.operation.ImageOperation
 import ch.obermuhlner.astro.gradient.operation.SubtractLinearImageOperation
 import ch.obermuhlner.astro.image.*
@@ -59,6 +60,7 @@ class AstrophotographyApp : Application() {
     private val gradientPixelColorProperty: ObjectProperty<Color> = SimpleObjectProperty()
     private val pointFinderStrategyProperty: ObjectProperty<PointFinderStrategy> = SimpleObjectProperty()
     private val interpolationPowerProperty: DoubleProperty = SimpleDoubleProperty()
+    private val despeckleRadiusProperty: IntegerProperty = SimpleIntegerProperty()
     private val blurRadiusProperty: IntegerProperty = SimpleIntegerProperty()
     private val singleGlowColorProperty: ObjectProperty<Color?> = SimpleObjectProperty(Color.BLACK)
     private val singleGlowColorDescriptionProperty: StringProperty = SimpleStringProperty()
@@ -180,6 +182,7 @@ class AstrophotographyApp : Application() {
             updateZoom()
         }
         singleGlowColorProperty.addListener { _, _, _ -> updateZoom() }
+        despeckleRadiusProperty.addListener { _, _, _ -> updateZoom() }
         blurRadiusProperty.addListener { _, _, _ -> updateZoom() }
 //    removalFactor.addListener((observable, oldValue, newValue) -> {
 //      gradientInterpolationFilter.setRemovalFactor(removalFactor.get());
@@ -205,8 +208,10 @@ class AstrophotographyApp : Application() {
                 gradient.setPixels(ColorModel.RGB, toDoubleColorRGB(singleGlowColorProperty.get()!!))
             }
             GlowStrategy.Blur -> {
+                val despeckleFilter = PseudoMedianFilter(despeckleRadiusProperty.get(), ColorModel.RGB)
+                val despeckled = despeckleFilter.filter(input)
                 val gaussianBlurFilter = GaussianBlurFilter(blurRadiusProperty.get(), ColorModel.RGB)
-                gaussianBlurFilter.filter(input, gradient)
+                gaussianBlurFilter.filter(despeckled, gradient)
             }
             GlowStrategy.Gradient -> {
                 gradientInterpolationFilter.filter(input, gradient)
@@ -219,6 +224,7 @@ class AstrophotographyApp : Application() {
         pointFinderStrategyProperty.set(PointFinderStrategy.All)
         setSampleRadius(5)
         interpolationPowerProperty.set(3.0)
+        despeckleRadiusProperty.set(5)
         blurRadiusProperty.set(100)
         removalFactorProperty.set(1.0)
         sampleSubtractionStrategyProperty.set(SubtractionStrategy.SubtractLinear)
@@ -386,6 +392,7 @@ class AstrophotographyApp : Application() {
             properties["glow.remover"] = glowStrategyProperty.get().toString()
             properties["glow.remover.singleColor.color"] = singleGlowColorProperty.get().toString()
             properties["glow.remover.singleColor.colorDescription"] = singleGlowColorDescriptionProperty.get().toString()
+            properties["glow.remover.blur.despeckleRadius"] = despeckleRadiusProperty.get().toString()
             properties["glow.remover.blur.gaussianBlurRadius"] = blurRadiusProperty.get().toString()
             for (i in fixPoints.indices) {
                 properties["glow.remover.gradient.fixpoint.$i.x"] = fixPoints[i].x.toString()
@@ -415,6 +422,7 @@ class AstrophotographyApp : Application() {
             glowStrategyProperty.set(GlowStrategy.valueOf(properties.getProperty("glow.remover")))
             singleGlowColorProperty.set(Color.valueOf(properties.getProperty("glow.remover.singleColor.color")))
             singleGlowColorDescriptionProperty.set(properties.getProperty("glow.remover.singleColor.colorDescription"))
+            despeckleRadiusProperty.set(properties.getProperty("glow.remover.blur.despeckleRadius").toInt())
             blurRadiusProperty.set(properties.getProperty("glow.remover.blur.gaussianBlurRadius").toInt())
             setSampleRadius(properties.getProperty("glow.remover.gradient.sampleRadius").toInt())
             removalFactorProperty.set(properties.getProperty("glow.remover.gradient.removalFactor").toDouble())
@@ -1035,6 +1043,12 @@ class AstrophotographyApp : Application() {
                             + "This is a good strategy for images where the object of interest occupies only a small area."))
                     var glowBlurRowIndex = 0
                     run {
+                        glowBlurGridPane.add(Label("Despeckle Radius:"), 0, glowBlurRowIndex)
+                        val despeckleRadiusTextField = TextField()
+                        glowBlurGridPane.add(despeckleRadiusTextField, 1, glowBlurRowIndex)
+                        Bindings.bindBidirectional(despeckleRadiusTextField.textProperty(), despeckleRadiusProperty, INTEGER_FORMAT)
+                        glowBlurRowIndex++
+
                         glowBlurGridPane.add(Label("Blur Radius:"), 0, glowBlurRowIndex)
                         val blurRadiusTextField = TextField()
                         glowBlurGridPane.add(blurRadiusTextField, 1, glowBlurRowIndex)

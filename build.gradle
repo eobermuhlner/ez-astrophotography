@@ -25,7 +25,8 @@ javafx {
 
 dependencies {
     //implementation 'mil.nga:tiff:2.0.2'
-    compile 'ch.obermuhlner:jshell-scriptengine:1.1.0'
+    implementation 'ch.obermuhlner:jshell-scriptengine:1.1.0'
+    implementation 'com.xenomachina:kotlin-argparser:2.0.7'
 
     testImplementation 'junit:junit:4.12'
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8"

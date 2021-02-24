@@ -3,9 +3,13 @@ package ch.obermuhlner.astro.app
 import ch.obermuhlner.astro.gradient.Point
 import ch.obermuhlner.astro.gradient.filter.*
 import ch.obermuhlner.astro.gradient.operation.ImageOperation
+import ch.obermuhlner.astro.gradient.operation.SubtractImageOperation
 import ch.obermuhlner.astro.gradient.operation.SubtractLinearImageOperation
+import ch.obermuhlner.astro.gradient.operation.SubtractSplineImageOperation
 import ch.obermuhlner.astro.image.*
 import ch.obermuhlner.astro.image.color.ColorModel
+import com.xenomachina.argparser.ArgParser
+import com.xenomachina.argparser.default
 import java.io.File
 import java.io.IOException
 import java.nio.file.Files
@@ -16,86 +20,140 @@ import java.util.regex.Pattern
 import javax.script.ScriptEngineManager
 import javax.script.ScriptException
 
+enum class GlowStrategy {
+    Gradient,
+    Blur,
+    SingleColor
+}
+
+enum class SingleColorStrategy {
+    Median,
+    Average,
+    Darkest
+}
+
+enum class SubtractStrategy {
+    Subtract,
+    SubtractLinear,
+    SubtractSpline
+}
+
 object Astrophotography {
     @Throws(IOException::class)
     @JvmStatic
-    fun main(args: Array<String>) {
+    fun mainTEST(args: Array<String>) {
         runTest()
     }
 
     @Throws(IOException::class)
-    fun mainTest(args: Array<String?>?) {
-        val outputFilePrefix = "output_"
-        val inputFiles: MutableList<File> = ArrayList()
-        val outputFiles: MutableList<File> = ArrayList()
-        val gradientFilter = AtomicReference<Filter>(GaussianBlurFilter(100, ColorModel.RGB))
-        val subtractOperation = AtomicReference<ImageOperation>(SubtractLinearImageOperation())
-        val gradientPoints: MutableList<Point> = ArrayList()
-        val sampleRadius = AtomicInteger(3)
-        val commandParser = CommandParser()
-        /*
-        commandParser.add(
-                CommandParser.Command("script", 1)
-        ) { commandArguments: NamedArguments, optionsWithArguments: OptionsWithArguments? ->
-            val script = loadScript(File(commandArguments.arguments[0]))
-            commandParser.parse(script)
-        }
-        commandParser.add(
-                CommandParser.Command("input", 1)
-        ) { commandArguments: NamedArguments, optionsWithArguments: OptionsWithArguments? -> inputFiles.add(File(commandArguments.arguments[0])) }
-        commandParser.add(
-                CommandParser.Command("batch", 0,
-                        CommandParser.Option("file", 1))
-        ) { commandArguments: NamedArguments?, optionsWithArguments: OptionsWithArguments -> optionsWithArguments.handleOption("file") { arguments: List<String?> -> inputFiles.add(File(arguments[0])) } }
-        commandParser.add(
-                CommandParser.Command("gradient", 0,
-                        CommandParser.Option("point", 1),
-                        CommandParser.Option("sampleradius", 1),
-                        CommandParser.Option("interpolationpower", 1)
-                )
-        ) { commandArguments: NamedArguments?, optionsWithArguments: OptionsWithArguments ->
-            val gradientInterpolationFilter = GradientInterpolationFilter()
-            optionsWithArguments.handleOption("point") { arguments: List<String?> -> gradientPoints.add(toPoint(arguments[0])) }
-            optionsWithArguments.handleOption("interpolationpower") { arguments: List<String?> -> gradientInterpolationFilter.interpolationPower = arguments[0]!!.toDouble() }
-            optionsWithArguments.handleOption("sampleradius") { arguments: List<String?> -> sampleRadius.set(arguments[0]!!.toInt()) }
-            gradientFilter.set(gradientInterpolationFilter)
-        }
-        commandParser.add(
-                CommandParser.Command("output", 1)
-        ) { commandArguments: NamedArguments, optionsWithArguments: OptionsWithArguments? -> outputFiles.add(File(commandArguments.arguments[0])) }
-        */
-
-        commandParser.parse(arrayOf(
-                "input", "images/Autosave001.tif",  //        "input", "images/inputs/Autosave001_small_compress0.png",
-                //        "median-blur", "10",
-                //        "gaussian-blur", "50",
-                //        "gradient", "--point", "100,100", "--point", "-100,-100",
-                "output", "images/Test.png"
+    @JvmStatic
+    fun main(args: Array<String>) {
+        val parser = ArgParser(arrayOf(
+                "-h",
+                "-v",
+                "--blur",
+                "images/Autosave001.tif"
         ))
-        //commandParser.parse(args);
 
-        for (f in inputFiles.indices) {
-            val inputFile = inputFiles[f]
-            var outputFile: File
-            outputFile = if (f < outputFiles.size) {
-                outputFiles[f]
-            } else {
-                File(inputFile.parent, outputFilePrefix + inputFile.name)
+        val verbose by parser.flagging(
+                "-v", "--verbose",
+                help = "enable verbose mode")
+
+        val glowStrategy by parser.mapping(
+                "--gradient" to GlowStrategy.Gradient,
+                "--blur" to GlowStrategy.Blur,
+                "--single-color" to GlowStrategy.SingleColor,
+                help = "glow removal strategy").default(GlowStrategy.Gradient)
+
+        val points by parser.adding(
+                "-p", "--point",
+                help = "fix point to determine glow gradient") { toPoint(this) }
+
+        val sampleRadius by parser.storing(
+                "--sample-radius",
+                help = "sample radius") { toInt() }.default(3)
+
+        val interpolationPower by parser.storing(
+                "--interpolation-power",
+                help = "interpolation power") { toDouble() }.default(3.0)
+
+        val color by parser.storing(
+                "--color",
+                help = "color") { toColor(this) }.default(DoubleArray(3))
+
+        val singleColorStrategy by parser.mapping(
+                "--median-color" to SingleColorStrategy.Median,
+                "--average-color" to SingleColorStrategy.Average,
+                "--darkest-color" to SingleColorStrategy.Darkest,
+                help = "").default(SingleColorStrategy.Median)
+
+        val subtractStrategy by parser.mapping(
+                "--subtract" to SubtractStrategy.Subtract,
+                "--subtract-linear" to SubtractStrategy.SubtractLinear,
+                "--subtract-spline" to SubtractStrategy.SubtractSpline,
+                help = "").default(SubtractStrategy.SubtractLinear)
+
+        val splineFactor by parser.storing(
+                "--spline-factor",
+                help = "spline factor") { toDouble() }.default(0.01)
+
+        val sources by parser.positionalList(
+                help = "source filename")
+
+        if (verbose) {
+            println("glowStrategy: $glowStrategy")
+            println("points: $points")
+            println("sampleRadius: $sampleRadius")
+            println("interpolationPower: $interpolationPower")
+            println("color: $color")
+            println("singleColorStrategy: $singleColorStrategy")
+            println("sources: $sources")
+        }
+
+        for (source in sources) {
+            println("Loading $source")
+            val sourceFile = File(source)
+            val inputImage = ImageReader.read(sourceFile, ImageQuality.High)
+
+            println("Processing $source")
+            val glowFilter = when (glowStrategy) {
+                GlowStrategy.SingleColor -> {
+                    GaussianBlurFilter(5, ColorModel.RGB)
+                }
+                GlowStrategy.Blur -> {
+                    GaussianBlurFilter(100, ColorModel.RGB)
+                }
+                GlowStrategy.Gradient -> {
+                    val gradientFilter = GradientInterpolationFilter(interpolationPower)
+                    if (points.isEmpty()) {
+                        autoSetFixPoints(gradientFilter, inputImage)
+                    } else {
+                        gradientFilter.setFixPoints(correctFixPoints(points, inputImage), inputImage, sampleRadius)
+                    }
+                    gradientFilter
+                }
             }
-            println("Load $inputFile")
-            val inputImage = ImageReader.read(inputFile, ImageQuality.High)
-            if (gradientFilter.get() is GradientInterpolationFilter) {
-                val gradientInterpolationFilter = gradientFilter.get() as GradientInterpolationFilter
-                gradientInterpolationFilter.setFixPoints(correctFixPoints(gradientPoints, inputImage), inputImage, sampleRadius.get())
+
+            val gradientImage = glowFilter.filter(inputImage)
+
+            println("Subtracting calculated glow from input image")
+            val subtractOperation = when (subtractStrategy) {
+                SubtractStrategy.Subtract -> {
+                    SubtractImageOperation()
+                }
+                SubtractStrategy.SubtractLinear -> {
+                    SubtractLinearImageOperation()
+                }
+                SubtractStrategy.SubtractSpline -> {
+                    SubtractSplineImageOperation(splineFactor)
+                }
             }
-            println("Create gradient " + gradientFilter.get())
-            val gradientImage = gradientFilter.get().filter(inputImage)
-            println("Subtract gradient " + subtractOperation.get())
             val outputImage = ImageCreator.create(inputImage.width, inputImage.height, ImageQuality.High)
-            subtractOperation.get().operation(inputImage, gradientImage, outputImage)
-            println("Save $outputFile")
+            subtractOperation.operation(inputImage, gradientImage, outputImage)
+
+            val outputFile = File(sourceFile.parent, "output_" + sourceFile.name)
+            println("Saving $outputFile")
             ImageWriter.write(outputImage, outputFile)
-            println("Finished $inputFile -> $outputFile")
         }
     }
 
@@ -115,8 +173,8 @@ object Astrophotography {
         val color3 = image.medianPixel(x3, y3, sampleWidth, sampleHeight)
         println("Auto median pixel3: " + Arrays.toString(color3))
         gradientInterpolationFilter.setFixPoints(
-                Arrays.asList(Point(x1, y1), Point(x2, y2), Point(x3, y3)),
-                Arrays.asList(color1, color2, color3))
+                listOf(Point(x1, y1), Point(x2, y2), Point(x3, y3)),
+                listOf(color1, color2, color3))
     }
 
     private fun loadScript(file: File): Array<String> {
@@ -146,6 +204,11 @@ object Astrophotography {
     private fun toPoint(string: String): Point {
         val split = string.split(Pattern.quote(",").toRegex()).toTypedArray()
         return Point(split[0].toInt(), split[1].toInt())
+    }
+
+    private fun toColor(string: String): DoubleArray {
+        val split = string.split(',')
+        return DoubleArray(3) { split[it].toDouble() }
     }
 
     @Throws(IOException::class)

@@ -260,7 +260,7 @@ class AstrophotographyApp : Application() {
 
     private fun setSampleRadius(value: Int) {
         // workaround, because Spinner.valueProperty() is read only
-        sampleRadiusSpinner!!.valueFactory.value = value
+        sampleRadiusSpinner.valueFactory.value = value
     }
 
     private fun updateFixPoints() {
@@ -283,50 +283,59 @@ class AstrophotographyApp : Application() {
     }
 
     private fun createToolbar(stage: Stage): Node {
-        val box = HBox(SPACING)
-        val openImageButton = Button("Open Image ...")
-        openImageButton.tooltip = tooltip("Opens a new input image.")
-        val openProjectButton = Button("Open Project ...")
-        openProjectButton.tooltip = tooltip("Opens an EZ-Astro project.")
-        val saveButton = Button("Save ...")
-        saveButton.tooltip = tooltip("Saves the calculated output image.")
-        saveButton.isDisable = true
-
-        box.children.add(openImageButton)
-        openImageButton.onAction = EventHandler {
-            openImageFile(stage)
-            saveButton.isDisable = false
+        val saveButton = button("Save ...") {
+            tooltip = tooltip("Saves the calculated output image.")
+            isDisable = true
+            onAction = EventHandler {
+                saveImageFile(stage)
+            }
         }
 
-        box.children.add(openProjectButton)
-        openProjectButton.onAction = EventHandler {
-            openProjectFile(stage)
-            saveButton.isDisable = false
+        return hbox(SPACING) {
+            children += button("Open Image ...") {
+                tooltip = tooltip("Opens a new input image.")
+                onAction = EventHandler {
+                    openImageFile(stage)
+                    saveButton.isDisable = false
+                }
+            }
+
+            children += button("Open Project ...") {
+                tooltip = tooltip("Opens an EZ-Astro project.")
+                onAction = EventHandler {
+                    openProjectFile(stage)
+                    saveButton.isDisable = false
+                }
+            }
+
+            children += saveButton
+
+            children += button {
+                graphic = rectangle(10.0, 10.0) {
+                    fill = Color.TRANSPARENT
+                    strokeProperty().bind(crosshairColorProperty)
+                }
+                tooltip = tooltip("Toggles the color of the crosshair in the zoom images.")
+                onAction = EventHandler {
+                    var index = crosshairColors.indexOf(crosshairColorProperty.get())
+                    index = (index + 1) % crosshairColors.size
+                    crosshairColorProperty.setValue(crosshairColors[index])
+                }
+            }
+
+            children += button {
+                graphic = circle(3.0) {
+                    fill = Color.TRANSPARENT
+                    strokeProperty().bind(fixPointColorProperty)
+                }
+                tooltip = tooltip("Toggles the color of the fix point markers in the input images.")
+                onAction = EventHandler {
+                    var index = crosshairColors.indexOf(fixPointColorProperty.get())
+                    index = (index + 1) % crosshairColors.size
+                    fixPointColorProperty.setValue(crosshairColors[index])
+                }
+            }
         }
-
-        box.children.add(saveButton)
-        saveButton.onAction = EventHandler { saveImageFile(stage) }
-
-        val crosshairColorButton = createColorButton(crosshairColorProperty, Rectangle(10.0, 10.0))
-        crosshairColorButton.tooltip = tooltip("Toggles the color of the crosshair in the zoom images.")
-        box.children.add(crosshairColorButton)
-        val fixPointColorButton = createColorButton(fixPointColorProperty, Circle(3.0))
-        fixPointColorButton.tooltip = tooltip("Toggles the color of the fix point markers in the input images.")
-        box.children.add(fixPointColorButton)
-        return box
-    }
-
-    private fun createColorButton(colorProperty: ObjectProperty<Color>, shape: Shape): Button {
-        val button = Button()
-        shape.fill = Color.TRANSPARENT
-        shape.strokeProperty().bind(colorProperty)
-        button.graphic = shape
-        button.onAction = EventHandler {
-            var index = crosshairColors.indexOf(colorProperty.get())
-            index = (index + 1) % crosshairColors.size
-            colorProperty.setValue(crosshairColors[index])
-        }
-        return button
     }
 
     private fun openImageFile(stage: Stage) {
@@ -352,7 +361,7 @@ class AstrophotographyApp : Application() {
 
     private fun openProjectFile(stage: Stage) {
         val fileChooser = FileChooser()
-        fileChooser.initialDirectory = homeDirectory.toFile()
+        fileChooser.initialDirectory = inputFile?.parentFile ?: homeDirectory.toFile()
         fileChooser.title = "Open Input Image"
         fileChooser.extensionFilters.add(FileChooser.ExtensionFilter("EZ-Astro", "*" + EZ_ASTRO_FILE_EXTENSION))
         val propertiesFile = fileChooser.showOpenDialog(stage)
@@ -370,15 +379,8 @@ class AstrophotographyApp : Application() {
     }
 
     private fun saveImageFile(stage: Stage) {
-        var directory: File? = null
-        if (inputFile != null) {
-            directory = inputFile!!.parentFile
-        }
-        if (directory == null) {
-            directory = homeDirectory.toFile()
-        }
         val fileChooser = FileChooser()
-        fileChooser.initialDirectory = directory
+        fileChooser.initialDirectory = inputFile?.parentFile ?: homeDirectory.toFile()
         fileChooser.title = "Save Image"
         fileChooser.extensionFilters.add(FileChooser.ExtensionFilter("Image", "*.tif", "*.tiff", "*.png", "*.jpg", "*.jpeg"))
         fileChooser.extensionFilters.add(FileChooser.ExtensionFilter("All", "*"))
@@ -488,6 +490,7 @@ class AstrophotographyApp : Application() {
         inputDoubleImage = image
         val width = inputDoubleImage.width
         val height = inputDoubleImage.height
+
         inputImage = WritableImage(width, height)
         val rgb = DoubleArray(3)
         val pw = inputImage.pixelWriter
@@ -498,15 +501,19 @@ class AstrophotographyApp : Application() {
             }
         }
         inputImageView.image = inputImage
+
         gradientImage = WritableImage(width, height)
         gradientDoubleImage = WriteThroughArrayDoubleImage(JavaFXWritableDoubleImage(gradientImage), ColorModel.RGB)
         gradientImageView.image = gradientImage
+
         outputImage = WritableImage(width, height)
         outputDoubleImage = WriteThroughArrayDoubleImage(JavaFXWritableDoubleImage(outputImage), ColorModel.RGB)
         outputImageView.image = outputImage
+
         deltaImage = WritableImage(width, height)
         deltaDoubleImage = WriteThroughArrayDoubleImage(JavaFXWritableDoubleImage(deltaImage), ColorModel.RGB)
         deltaImageView.image = deltaImage
+
         medianAllColor = null
         averageAllColor = null
         darkestAllColor = null
@@ -525,59 +532,62 @@ class AstrophotographyApp : Application() {
     }
 
     private fun createInputImageViewer(): Node {
-        val box = VBox(SPACING)
-        inputDecorationsPane.isMouseTransparent = true
-        box.children.add(withZoomRectangle(inputImageView, inputDecorationsPane))
         inputImageView.isPreserveRatio = true
         inputImageView.fitWidth = IMAGE_WIDTH.toDouble()
         inputImageView.fitHeight = IMAGE_HEIGHT.toDouble()
         setupImageSelectionListener(inputImageView)
-        return box
+
+        inputDecorationsPane.isMouseTransparent = true
+
+        return withZoomRectangle(inputImageView, inputDecorationsPane)
     }
 
     private fun createGradientImageViewer(): Node {
-        val box = VBox(SPACING)
-        gradientDecorationsPane.isMouseTransparent = true
-        box.children.add(withZoomRectangle(gradientImageView, gradientDecorationsPane))
         gradientImageView.isPreserveRatio = true
         gradientImageView.fitWidth = IMAGE_WIDTH.toDouble()
         gradientImageView.fitHeight = IMAGE_HEIGHT.toDouble()
         setupImageSelectionListener(gradientImageView)
-        return box
+
+        gradientDecorationsPane.isMouseTransparent = true
+
+        return withZoomRectangle(gradientImageView, gradientDecorationsPane)
     }
 
     private fun createOutputImageViewer(): Node {
-        val box = VBox(SPACING)
-        outputDecorationsPane.isMouseTransparent = true
-        box.children.add(withZoomRectangle(outputImageView, outputDecorationsPane))
         outputImageView.isPreserveRatio = true
         outputImageView.fitWidth = IMAGE_WIDTH.toDouble()
         outputImageView.fitHeight = IMAGE_HEIGHT.toDouble()
         setupImageSelectionListener(outputImageView)
-        return box
+
+        outputDecorationsPane.isMouseTransparent = true
+
+        return withZoomRectangle(outputImageView, outputDecorationsPane)
     }
 
     private fun createDeltaImageViewer(): Node {
-        val box = VBox(SPACING)
-        deltaDecorationsPane.isMouseTransparent = true
-        box.children.add(withZoomRectangle(deltaImageView, deltaDecorationsPane))
         deltaImageView.isPreserveRatio = true
         deltaImageView.fitWidth = IMAGE_WIDTH.toDouble()
         deltaImageView.fitHeight = IMAGE_HEIGHT.toDouble()
         setupImageSelectionListener(deltaImageView)
-        return box
+
+        deltaDecorationsPane.isMouseTransparent = true
+
+        return withZoomRectangle(deltaImageView, deltaDecorationsPane)
     }
 
     private fun setupImageSelectionListener(imageView: ImageView) {
         setMouseDragEvents(imageView) { event: MouseEvent ->
             val imageViewWidth = imageView.boundsInLocal.width
             val imageViewHeight = imageView.boundsInLocal.height
+
             var zoomX = (event.x * imageView.image.width / imageViewWidth).toInt()
             var zoomY = (event.y * imageView.image.height / imageViewHeight).toInt()
+
             zoomX = max(zoomX, 0)
             zoomY = max(zoomY, 0)
             zoomX = min(zoomX, imageView.image.width.toInt() - 1)
             zoomY = min(zoomY, imageView.image.height.toInt() - 1)
+
             setZoom(zoomX, zoomY)
         }
     }
@@ -591,9 +601,11 @@ class AstrophotographyApp : Application() {
     private fun updateZoom(zoomX: Int = zoomCenterXProperty.get(), zoomY: Int = zoomCenterYProperty.get()) {
         val zoomOffsetX = zoomX - ZOOM_WIDTH / 2
         val zoomOffsetY = zoomY - ZOOM_HEIGHT / 2
+
         val rgb = DoubleArray(3)
         ColorUtil.toIntARGB(inputDoubleImage.getPixel(zoomX, zoomY, ColorModel.RGB, rgb))
         samplePixelColorProperty.set(Color(rgb[ColorModel.RGB.R], rgb[ColorModel.RGB.G], rgb[ColorModel.RGB.B], 1.0))
+
         val sampleRadius1 = sampleRadiusProperty.get()
         inputDoubleImage.averagePixel(
                 zoomX - sampleRadius1,
@@ -604,8 +616,10 @@ class AstrophotographyApp : Application() {
                 rgb
         )
         sampleAverageColorProperty.set(Color(rgb[ColorModel.RGB.R], rgb[ColorModel.RGB.G], rgb[ColorModel.RGB.B], 1.0))
+
         zoomGradientDoubleImage.getPixel(ZOOM_WIDTH / 2, ZOOM_HEIGHT / 2, ColorModel.RGB, rgb)
         gradientPixelColorProperty.set(Color(rgb[ColorModel.RGB.R], rgb[ColorModel.RGB.G], rgb[ColorModel.RGB.B], 1.0))
+
         zoomInputDoubleImage.setPixels(
                 zoomOffsetX,
                 zoomOffsetY,
@@ -615,10 +629,12 @@ class AstrophotographyApp : Application() {
                 ZOOM_WIDTH,
                 ZOOM_HEIGHT,
                 ColorModel.RGB, doubleArrayOf(0.0, 0.0, 0.0))
+
         removeGradient(
                 zoomInputDoubleImage,
                 zoomGradientDoubleImage,
                 zoomOutputDoubleImage)
+
         updateColorCurve()
         updateZoomHistogram()
         updateZoomDelta()
@@ -640,9 +656,11 @@ class AstrophotographyApp : Application() {
         val gradient: DoubleImage = ArrayDoubleImage(1, 1, ColorModel.RGB)
         val output: DoubleImage = ArrayDoubleImage(1, 1, ColorModel.RGB)
         val color = DoubleArray(3)
+
         gc.fill = Color.LIGHTGRAY
         gc.fillRect(0.0, 0.0, canvasWidth, canvasHeight)
         gc.lineWidth = 2.0
+
         val xStep = 1.0 / canvasWidth * 0.5
         var lastCanvasX = 0.0
         var lastCanvasYR = 0.0
@@ -654,15 +672,19 @@ class AstrophotographyApp : Application() {
             color[ColorModel.RGB.G] = x
             color[ColorModel.RGB.B] = x
             input.setPixel(0, 0, ColorModel.RGB, color)
+
             color[ColorModel.RGB.R] = gradientColor.red
             color[ColorModel.RGB.G] = gradientColor.green
             color[ColorModel.RGB.B] = gradientColor.blue
             gradient.setPixel(0, 0, ColorModel.RGB, color)
+
             subtractor.operation(input, gradient, output)
+
             output.getPixel(0, 0, ColorModel.RGB, color)
             val yR = color[ColorModel.RGB.R]
             val yG = color[ColorModel.RGB.G]
             val yB = color[ColorModel.RGB.B]
+
             val canvasX = x * chartWidth + inset
             val canvasYR = canvasHeight - inset - yR * chartHeight
             val canvasYG = canvasHeight - inset - yG * chartHeight
@@ -679,6 +701,7 @@ class AstrophotographyApp : Application() {
             lastCanvasYR = canvasYR
             lastCanvasYG = canvasYG
             lastCanvasYB = canvasYB
+
             x += xStep
         }
     }
@@ -691,6 +714,7 @@ class AstrophotographyApp : Application() {
     private fun updateZoomHistogram() {
         zoomInputHistogram.sampleImage(zoomInputDoubleImage)
         drawHistogram(zoomInputHistogramCanvas, zoomInputHistogram)
+
         zoomOutputHistogram.sampleImage(zoomOutputDoubleImage)
         drawHistogram(zoomOutputHistogramCanvas, zoomOutputHistogram)
     }
@@ -699,9 +723,11 @@ class AstrophotographyApp : Application() {
         val gc = histogramCanvas!!.graphicsContext2D
         val canvasWidth = histogramCanvas.width
         val canvasHeight = histogramCanvas.height
+
         gc.fill = Color.LIGHTGRAY
         gc.fillRect(0.0, 0.0, canvasWidth, canvasHeight)
         gc.lineWidth = 2.0
+
         var prevR = histogram[ColorModel.RGB.R, 0] * canvasHeight
         var prevG = histogram[ColorModel.RGB.G, 0] * canvasHeight
         var prevB = histogram[ColorModel.RGB.B, 0] * canvasHeight
@@ -710,10 +736,12 @@ class AstrophotographyApp : Application() {
             val r = histogram[ColorModel.RGB.R, binIndex] * canvasHeight
             gc.strokeLine((binIndex - 1).toDouble(), canvasHeight - prevR, binIndex.toDouble(), canvasHeight - r)
             prevR = r
+
             gc.stroke = GREEN_SEMI
             val g = histogram[ColorModel.RGB.G, binIndex] * canvasHeight
             gc.strokeLine((binIndex - 1).toDouble(), canvasHeight - prevG, binIndex.toDouble(), canvasHeight - g)
             prevG = g
+
             gc.stroke = BLUE_SEMI
             val b = histogram[ColorModel.RGB.B, binIndex] * canvasHeight
             gc.strokeLine((binIndex - 1).toDouble(), canvasHeight - prevB, binIndex.toDouble(), canvasHeight - b)
@@ -736,6 +764,7 @@ class AstrophotographyApp : Application() {
         val sample2 = DoubleArray(3)
         val output = DoubleArray(3)
         val rgb = DoubleArray(3)
+
         for (y in 0 until image1.height) {
             for (x in 0 until image1.width) {
                 image1.getPixel(x, y, ColorModel.RGB, sample1)
@@ -743,6 +772,7 @@ class AstrophotographyApp : Application() {
                 output[ColorModel.RGB.R] = sample1[ColorModel.RGB.R] - sample2[ColorModel.RGB.R]
                 output[ColorModel.RGB.G] = sample1[ColorModel.RGB.G] - sample2[ColorModel.RGB.G]
                 output[ColorModel.RGB.B] = sample1[ColorModel.RGB.B] - sample2[ColorModel.RGB.B]
+
                 val delta = ColorUtil.sampleDistance(output, colorModel, sampleIndex, true)
                 if (delta < 0) {
                     rgb[ColorModel.RGB.R] = min(1.0, -delta * sampleFactor)
@@ -753,6 +783,7 @@ class AstrophotographyApp : Application() {
                     rgb[ColorModel.RGB.G] = min(1.0, delta * sampleFactor * 0.5)
                     rgb[ColorModel.RGB.B] = min(1.0, delta * sampleFactor)
                 }
+
                 deltaImage.setPixel(x, y, ColorModel.RGB, rgb)
             }
         }
@@ -873,148 +904,141 @@ class AstrophotographyApp : Application() {
                     glowSingleColorTab.tooltip = tooltip(("Determine a single color that will be used uniformly to estimate the glow.\n"
                             + "This is a good strategy if the glow is uniform over the entire image."))
                     var glowSingleColorRowIndex = 0
+
                     run {
-                        val buttonBox = HBox(SPACING)
+                        val buttonBox = hbox(SPACING) {
+                            children += button("Median All") {
+                                tooltip = tooltip("Finds the median color of all pixels in the input image.")
+                                onAction = EventHandler {
+                                    updateSingleGlowColor {
+                                        if (medianAllColor == null) {
+                                            medianAllColor = toJavafxColor(inputDoubleImage.medianPixel(ColorModel.RGB))
+                                        }
+                                        medianAllColor!!
+                                    }
+                                    singleGlowColorDescriptionProperty.set("Median All " + inputDoubleImage.width + "x" + inputDoubleImage.height)
+                                }
+                            }
+
+                            children += button("Average All") {
+                                tooltip = tooltip("Finds the average color of all pixels in the input image.")
+                                onAction = EventHandler {
+                                    updateSingleGlowColor {
+                                        if (averageAllColor == null) {
+                                            averageAllColor = toJavafxColor(inputDoubleImage.averagePixel(ColorModel.RGB))
+                                        }
+                                        averageAllColor!!
+                                    }
+                                    singleGlowColorDescriptionProperty.set("Average All " + inputDoubleImage.width + "x" + inputDoubleImage.height)
+                                }
+                            }
+
+                            children += button("Darkest All") {
+                                tooltip = tooltip("Finds the darkest color of all pixels in the input image.")
+                                onAction = EventHandler {
+                                    updateSingleGlowColor {
+                                        if (darkestAllColor == null) {
+                                            darkestAllColor = toJavafxColor(inputDoubleImage.darkestPixel())
+                                        }
+                                        darkestAllColor!!
+                                    }
+                                    singleGlowColorDescriptionProperty.set("Darkest All " + inputDoubleImage.width + "x" + inputDoubleImage.height)
+                                }
+                            }
+                        }
                         glowSingleColorGridPane.add(buttonBox, 0, glowSingleColorRowIndex, 2, 1)
-                        run {
-                            val button = Button("Median All")
-                            buttonBox.children.add(button)
-                            tooltip(button, "Finds the median color of all pixels in the input image.")
-                            button.onAction = EventHandler {
-                                updateSingleGlowColor {
-                                    if (medianAllColor == null) {
-                                        medianAllColor = toJavafxColor(inputDoubleImage.medianPixel(ColorModel.RGB))
-                                    }
-                                    medianAllColor!!
-                                }
-                                singleGlowColorDescriptionProperty.set("Median All " + inputDoubleImage.width + "x" + inputDoubleImage.height)
-                            }
-                        }
-                        run {
-                            val button = Button("Average All")
-                            buttonBox.children.add(button)
-                            tooltip(button, "Finds the average color of all pixels in the input image.")
-                            button.onAction = EventHandler {
-                                updateSingleGlowColor {
-                                    if (averageAllColor == null) {
-                                        averageAllColor = toJavafxColor(inputDoubleImage.averagePixel(ColorModel.RGB))
-                                    }
-                                    averageAllColor!!
-                                }
-                                singleGlowColorDescriptionProperty.set("Average All " + inputDoubleImage.width + "x" + inputDoubleImage.height)
-                            }
-                        }
-                        run {
-                            val button = Button("Darkest All")
-                            buttonBox.children.add(button)
-                            tooltip(button, "Finds the darkest color of all pixels in the input image.")
-                            button.onAction = EventHandler {
-                                updateSingleGlowColor {
-                                    if (darkestAllColor == null) {
-                                        darkestAllColor = toJavafxColor(inputDoubleImage.darkestPixel())
-                                    }
-                                    darkestAllColor!!
-                                }
-                                singleGlowColorDescriptionProperty.set("Darkest All " + inputDoubleImage.width + "x" + inputDoubleImage.height)
-                            }
-                        }
                         glowSingleColorRowIndex++
                     }
                     run {
-                        val buttonBox = HBox(SPACING)
+                        val buttonBox = hbox(SPACING) {
+                            children += button("Median Zoom") {
+                                tooltip = tooltip("Finds the median color of the pixels in the zoom input image.")
+                                onAction = EventHandler {
+                                    updateSingleGlowColor { toJavafxColor(zoomInputDoubleImage.medianPixel()) }
+                                    val width = ZOOM_WIDTH
+                                    val height = ZOOM_HEIGHT
+                                    val x = zoomCenterXProperty.get() - width / 2
+                                    val y = zoomCenterYProperty.get() - height / 2
+                                    singleGlowColorDescriptionProperty.set("Median Zoom " + x + "," + y + " " + width + "x" + height)
+                                }
+                            }
+
+                            children += button("Average Zoom") {
+                                tooltip = tooltip("Finds the average color of the pixels in the zoom input image.")
+                                onAction = EventHandler {
+                                    updateSingleGlowColor { toJavafxColor(zoomInputDoubleImage.averagePixel()) }
+                                    val width: Int = ZOOM_WIDTH
+                                    val height: Int = ZOOM_HEIGHT
+                                    val x: Int = zoomCenterXProperty.get() - width / 2
+                                    val y: Int = zoomCenterYProperty.get() - height / 2
+                                    singleGlowColorDescriptionProperty.set("Average Zoom " + x + "," + y + " " + width + "x" + height)
+                                }
+                            }
+
+                            children += button("Darkest Zoom") {
+                                tooltip = tooltip("Finds the darkest color of the pixels in the zoom input image.")
+                                onAction = EventHandler {
+                                    updateSingleGlowColor { toJavafxColor(zoomInputDoubleImage.darkestPixel()) }
+                                    val width: Int = ZOOM_WIDTH
+                                    val height: Int = ZOOM_HEIGHT
+                                    val x: Int = zoomCenterXProperty.get() - width / 2
+                                    val y: Int = zoomCenterYProperty.get() - height / 2
+                                    singleGlowColorDescriptionProperty.set("Darkest Zoom " + x + "," + y + " " + width + "x" + height)
+                                }
+                            }
+                        }
                         glowSingleColorGridPane.add(buttonBox, 0, glowSingleColorRowIndex, 2, 1)
-                        run {
-                            val button = Button("Median Zoom")
-                            buttonBox.children.add(button)
-                            tooltip(button, "Finds the median color of the pixels in the zoom input image.")
-                            button.onAction = EventHandler {
-                                updateSingleGlowColor { toJavafxColor(zoomInputDoubleImage.medianPixel()) }
-                                val width = ZOOM_WIDTH
-                                val height = ZOOM_HEIGHT
-                                val x = zoomCenterXProperty.get() - width / 2
-                                val y = zoomCenterYProperty.get() - height / 2
-                                singleGlowColorDescriptionProperty.set("Median Zoom " + x + "," + y + " " + width + "x" + height)
-                            }
-                        }
-                        run {
-                            val button = Button("Average Zoom")
-                            buttonBox.children.add(button)
-                            tooltip(button, "Finds the average color of the pixels in the zoom input image.")
-                            button.onAction = EventHandler {
-                                updateSingleGlowColor { toJavafxColor(zoomInputDoubleImage.averagePixel()) }
-                                val width: Int = ZOOM_WIDTH
-                                val height: Int = ZOOM_HEIGHT
-                                val x: Int = zoomCenterXProperty.get() - width / 2
-                                val y: Int = zoomCenterYProperty.get() - height / 2
-                                singleGlowColorDescriptionProperty.set("Average Zoom " + x + "," + y + " " + width + "x" + height)
-                            }
-                        }
-                        run {
-                            val button = Button("Darkest Zoom")
-                            buttonBox.children.add(button)
-                            tooltip(button, "Finds the darkest color of the pixels in the zoom input image.")
-                            button.onAction = EventHandler {
-                                updateSingleGlowColor { toJavafxColor(zoomInputDoubleImage.darkestPixel()) }
-                                val width: Int = ZOOM_WIDTH
-                                val height: Int = ZOOM_HEIGHT
-                                val x: Int = zoomCenterXProperty.get() - width / 2
-                                val y: Int = zoomCenterYProperty.get() - height / 2
-                                singleGlowColorDescriptionProperty.set("Darkest Zoom " + x + "," + y + " " + width + "x" + height)
-                            }
-                        }
                         glowSingleColorRowIndex++
                     }
+
                     run {
-                        val buttonBox = HBox(SPACING)
+                        val buttonBox = hbox(SPACING) {
+                            children += button("Median Sample") {
+                                tooltip = tooltip("Finds the median color of the pixels in the sample radius of the zoom input image.")
+                                onAction = EventHandler {
+                                    val zx = ZOOM_WIDTH / 2
+                                    val zy = ZOOM_HEIGHT / 2
+                                    val r = sampleRadiusProperty.get()
+                                    updateSingleGlowColor { toJavafxColor(zoomInputDoubleImage.croppedImage(zx - r, zy - r, r + r + 1, r + r + 1).medianPixel()) }
+                                    val width = r + r + 1
+                                    val height = r + r + 1
+                                    val x = zoomCenterXProperty.get() - width / 2
+                                    val y = zoomCenterYProperty.get() - height / 2
+                                    singleGlowColorDescriptionProperty.set("Median Sample " + x + "," + y + " " + width + "x" + height)
+                                }
+                            }
+
+                            children += button("Average Sample") {
+                                tooltip = tooltip("Finds the average color of the pixels in the sample radius of the zoom input image.")
+                                onAction = EventHandler {
+                                    val zx: Int = ZOOM_WIDTH / 2
+                                    val zy: Int = ZOOM_HEIGHT / 2
+                                    val r: Int = sampleRadiusProperty.get()
+                                    updateSingleGlowColor { toJavafxColor(zoomInputDoubleImage.croppedImage(zx - r, zy - r, r + r + 1, r + r + 1).averagePixel()) }
+                                    val width: Int = r + r + 1
+                                    val height: Int = r + r + 1
+                                    val x: Int = zoomCenterXProperty.get() - width / 2
+                                    val y: Int = zoomCenterYProperty.get() - height / 2
+                                    singleGlowColorDescriptionProperty.set("Average Sample " + x + "," + y + " " + width + "x" + height)
+                                }
+                            }
+
+                            children += button("Darkest Sample") {
+                                tooltip = tooltip("Finds the darkest color of the pixels in the sample radius of the zoom input image.")
+                                onAction = EventHandler {
+                                    val zx: Int = ZOOM_WIDTH / 2
+                                    val zy: Int = ZOOM_HEIGHT / 2
+                                    val r: Int = sampleRadiusProperty.get()
+                                    updateSingleGlowColor { toJavafxColor(zoomInputDoubleImage.croppedImage(zx - r, zy - r, r + r + 1, r + r + 1).darkestPixel()) }
+                                    val width: Int = r + r + 1
+                                    val height: Int = r + r + 1
+                                    val x: Int = zoomCenterXProperty.get() - width / 2
+                                    val y: Int = zoomCenterYProperty.get() - height / 2
+                                    singleGlowColorDescriptionProperty.set("Darkest Sample " + x + "," + y + " " + width + "x" + height)
+                                }
+                            }
+                        }
                         glowSingleColorGridPane.add(buttonBox, 0, glowSingleColorRowIndex, 2, 1)
-                        run {
-                            val button = Button("Median Sample")
-                            buttonBox.children.add(button)
-                            tooltip(button, "Finds the median color of the pixels in the sample radius of the zoom input image.")
-                            button.onAction = EventHandler {
-                                val zx = ZOOM_WIDTH / 2
-                                val zy = ZOOM_HEIGHT / 2
-                                val r = sampleRadiusProperty.get()
-                                updateSingleGlowColor { toJavafxColor(zoomInputDoubleImage.croppedImage(zx - r, zy - r, r + r + 1, r + r + 1).medianPixel()) }
-                                val width = r + r + 1
-                                val height = r + r + 1
-                                val x = zoomCenterXProperty.get() - width / 2
-                                val y = zoomCenterYProperty.get() - height / 2
-                                singleGlowColorDescriptionProperty.set("Median Sample " + x + "," + y + " " + width + "x" + height)
-                            }
-                        }
-                        run {
-                            val button = Button("Average Sample")
-                            buttonBox.children.add(button)
-                            tooltip(button, "Finds the average color of the pixels in the sample radius of the zoom input image.")
-                            button.onAction = EventHandler {
-                                val zx: Int = ZOOM_WIDTH / 2
-                                val zy: Int = ZOOM_HEIGHT / 2
-                                val r: Int = sampleRadiusProperty.get()
-                                updateSingleGlowColor { toJavafxColor(zoomInputDoubleImage.croppedImage(zx - r, zy - r, r + r + 1, r + r + 1).averagePixel()) }
-                                val width: Int = r + r + 1
-                                val height: Int = r + r + 1
-                                val x: Int = zoomCenterXProperty.get() - width / 2
-                                val y: Int = zoomCenterYProperty.get() - height / 2
-                                singleGlowColorDescriptionProperty.set("Average Sample " + x + "," + y + " " + width + "x" + height)
-                            }
-                        }
-                        run {
-                            val button = Button("Darkest Sample")
-                            buttonBox.children.add(button)
-                            tooltip(button, "Finds the darkest color of the pixels in the sample radius of the zoom input image.")
-                            button.onAction = EventHandler {
-                                val zx: Int = ZOOM_WIDTH / 2
-                                val zy: Int = ZOOM_HEIGHT / 2
-                                val r: Int = sampleRadiusProperty.get()
-                                updateSingleGlowColor { toJavafxColor(zoomInputDoubleImage.croppedImage(zx - r, zy - r, r + r + 1, r + r + 1).darkestPixel()) }
-                                val width: Int = r + r + 1
-                                val height: Int = r + r + 1
-                                val x: Int = zoomCenterXProperty.get() - width / 2
-                                val y: Int = zoomCenterYProperty.get() - height / 2
-                                singleGlowColorDescriptionProperty.set("Darkest Sample " + x + "," + y + " " + width + "x" + height)
-                            }
-                        }
                         glowSingleColorRowIndex++
                     }
                     run {

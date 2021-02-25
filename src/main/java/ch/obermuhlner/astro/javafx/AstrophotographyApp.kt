@@ -34,6 +34,8 @@ import javafx.scene.shape.Rectangle
 import javafx.scene.shape.Shape
 import javafx.stage.FileChooser
 import javafx.stage.Stage
+import org.apache.commons.imaging.Imaging
+import org.apache.commons.imaging.common.GenericImageMetadata
 import java.io.*
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -120,6 +122,7 @@ class AstrophotographyApp : Application() {
     private var zoomInputHistogramCanvas: Canvas? = null
     private val zoomOutputHistogram = Histogram(ColorModel.RGB, HISTOGRAM_WIDTH - 1)
     private var zoomOutputHistogramCanvas: Canvas? = null
+    private val imageInfoGridPane = GridPane()
 
     override fun start(primaryStage: Stage) {
         val root = Group()
@@ -139,7 +142,6 @@ class AstrophotographyApp : Application() {
                     + "- the zoom window\n"
                     + "- the fixpoints for gradient interpolation (initially empty)"))
 
-            //imageTabPane.getTabs().add(new Tab("Details", new Label("TODO: Details")));
             val glowTab = Tab("Glow", createGradientImageViewer())
             imageTabPane.tabs.add(glowTab)
             glowTab.tooltip = tooltip(("Shows the calculated sky glow image that will be removed from the input image.\n"
@@ -154,8 +156,10 @@ class AstrophotographyApp : Application() {
                     + "The channel to calculate the difference can be selected: Red, Green, Blue, Hue, Saturation, Brightness\n"
                     + "Blue colors indicate a positive, red a negative difference.\n"
                     + "Switching away from the input tab will take a while to calculate the image."))
-            imageTabPane.selectionModel.selectedItemProperty().addListener { _, oldValue: Tab, _ ->
-                if (oldValue === inputTab) {
+            val infoTab = Tab("Info", createInfoPane())
+            imageTabPane.tabs.add(infoTab)
+            imageTabPane.selectionModel.selectedItemProperty().addListener { _, oldValue: Tab, newValue: Tab ->
+                if (oldValue === inputTab && newValue !== infoTab) {
                     removeGradient(inputDoubleImage, gradientDoubleImage, outputDoubleImage)
                     calculateDeltaImage(
                             inputDoubleImage,
@@ -200,6 +204,34 @@ class AstrophotographyApp : Application() {
         initializeValues()
 
         loadImage(DummyDoubleImage)
+    }
+
+    private fun createInfoPane(): Node {
+        val scrollPane = ScrollPane(imageInfoGridPane)
+
+        imageInfoGridPane.hgap = SPACING
+        imageInfoGridPane.vgap = SPACING
+
+        return scrollPane
+    }
+
+    private fun updateInfoPane(file: File) {
+        imageInfoGridPane.getChildren().clear()
+        var rowIndex = 0
+
+        val metadata = Imaging.getMetadata(file)
+        for (item in metadata.items) {
+            when (item) {
+                is GenericImageMetadata.GenericImageMetadataItem -> {
+                    imageInfoGridPane.add(Label(item.keyword), 0, rowIndex)
+                    imageInfoGridPane.add(Label(item.text), 1, rowIndex)
+                }
+                else -> {
+                    imageInfoGridPane.add(Label(item.toString()), 0, rowIndex)
+                }
+            }
+            rowIndex++
+        }
     }
 
     private fun removeGradient(input: DoubleImage, gradient: DoubleImage, output: DoubleImage) {
@@ -312,8 +344,9 @@ class AstrophotographyApp : Application() {
             ProgressDialog.show("Loading", "Loading input image ...") {
                 try {
                     inputFile = chosenFile
-                    loadImage(inputFile!!)
-                    stage.title = inputFile?.name
+                    loadImage(chosenFile)
+                    updateInfoPane(chosenFile)
+                    stage.title = chosenFile.name
                 } catch (e: IOException) {
                     e.printStackTrace()
                 }

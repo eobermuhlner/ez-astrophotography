@@ -807,6 +807,7 @@ class AstrophotographyApp : Application() {
         zoomDeltaImage = WritableImage(ZOOM_WIDTH, ZOOM_HEIGHT)
         zoomDeltaDoubleImage = JavaFXWritableDoubleImage(zoomDeltaImage)
         zoomDeltaImageView.image = zoomDeltaImage
+
         run {
             val mainGridPane = GridPane()
             mainGridPane.hgap = SPACING
@@ -814,42 +815,30 @@ class AstrophotographyApp : Application() {
             mainBox.children.add(mainGridPane)
             var rowIndex = 0
             run {
-                val sampleHBox = HBox(SPACING)
+                val sampleHBox = hbox(SPACING) {
+                    children += label("X:")
+                    children += textfield {
+                        prefWidth = 60.0
+                        Bindings.bindBidirectional(textProperty(), zoomCenterXProperty, INTEGER_FORMAT)
+                    }
+
+                    children += label("Y:")
+                    children += textfield {
+                        prefWidth = 60.0
+                        Bindings.bindBidirectional(textProperty(), zoomCenterYProperty, INTEGER_FORMAT)
+                    }
+
+                    children += label("Radius:")
+                    children += node(sampleRadiusSpinner) {
+                        tooltip = tooltip("Radius of the sample area used to calculate the color of gradient fix points.\n"
+                                + "The width and height of the sample area will be: 2*radius + 1")
+                        styleClass.add(Spinner.STYLE_CLASS_SPLIT_ARROWS_HORIZONTAL)
+                        prefWidth = 70.0
+                        sampleRadiusProperty.bind(this.valueProperty())
+                    }
+                }
+
                 mainGridPane.add(sampleHBox, 0, rowIndex, 4, 1)
-                sampleHBox.children.add(Label("X:"))
-                val zoomCenterXTextField = TextField()
-                sampleHBox.children.add(zoomCenterXTextField)
-                zoomCenterXTextField.prefWidth = 60.0
-                Bindings.bindBidirectional(zoomCenterXTextField.textProperty(), zoomCenterXProperty, INTEGER_FORMAT)
-                sampleHBox.children.add(Label("Y:"))
-                val zoomCenterYTextField = TextField()
-                sampleHBox.children.add(zoomCenterYTextField)
-                zoomCenterYTextField.prefWidth = 60.0
-                Bindings.bindBidirectional(zoomCenterYTextField.textProperty(), zoomCenterYProperty, INTEGER_FORMAT)
-                sampleHBox.children.add(Label("Radius:"))
-                sampleHBox.children.add(sampleRadiusSpinner)
-                sampleRadiusSpinner.tooltip = tooltip(("Radius of the sample area used to calculate the color of gradient fix points.\n"
-                        + "The width and height of the sample area will be: 2*radius + 1"))
-                sampleRadiusSpinner.styleClass.add(Spinner.STYLE_CLASS_SPLIT_ARROWS_HORIZONTAL)
-                sampleRadiusSpinner.prefWidth = 70.0
-                sampleRadiusProperty.bind(sampleRadiusSpinner.valueProperty())
-
-                /*
-        sampleHBox.getChildren().add(new Label("Pixel:"));
-        Rectangle samplePixelRectangle = new Rectangle(COLOR_INDICATOR_SIZE, COLOR_INDICATOR_SIZE);
-        sampleHBox.getChildren().add(samplePixelRectangle);
-        samplePixelRectangle.fillProperty().bind(samplePixelColor);
-
-        sampleHBox.getChildren().add(new Label("Avg:"));
-        Rectangle sampleAverageRectangle = new Rectangle(COLOR_INDICATOR_SIZE, COLOR_INDICATOR_SIZE);
-        sampleHBox.getChildren().add(sampleAverageRectangle);
-        sampleAverageRectangle.fillProperty().bind(sampleAverageColor);
-
-        sampleHBox.getChildren().add(new Label("Gradient:"));
-        Rectangle sampleGradientRectangle = new Rectangle(COLOR_INDICATOR_SIZE, COLOR_INDICATOR_SIZE);
-        sampleHBox.getChildren().add(sampleGradientRectangle);
-        sampleGradientRectangle.fillProperty().bind(gradientPixelColor);
-        */
                 rowIndex++
             }
             run {
@@ -863,22 +852,23 @@ class AstrophotographyApp : Application() {
                 }
                 run {
                     mainGridPane.add(Label("Glow:"), 0, rowIndex)
-                    val hbox = HBox(SPACING)
+                    val hbox = hbox(SPACING) {
+                        children += label("Delta:")
+                        children += combobox(SampleChannel.values()) {
+                            tooltip = tooltip("Color channel used to show the delta between the input image and glow image.\n"
+                                    + "The brightness delta is useful to determine how much color information is lost in the subtraction.")
+                            Bindings.bindBidirectional(valueProperty(), zoomDeltaSampleChannelProperty)
+                        }
+                        children += spinner(1.0, 50.0, 20.0) {
+                            tooltip = tooltip("Factor used to exaggerate the delta value.")
+                            styleClass.add(Spinner.STYLE_CLASS_SPLIT_ARROWS_HORIZONTAL)
+                            prefWidth = 70.0
+                            zoomDeltaSampleFactorProperty.bind(valueProperty())
+                        }
+                    }
                     mainGridPane.add(hbox, 1, rowIndex)
-                    hbox.children.add(Label("Delta:"))
-                    val zoomDeltaColorModelComboBox = ComboBox(FXCollections
-                            .observableArrayList(*SampleChannel.values()))
-                    hbox.children.add(zoomDeltaColorModelComboBox)
-                    tooltip(zoomDeltaColorModelComboBox, ("Color channel used to show the delta between the input image and glow image.\n"
-                            + "The brightness delta is useful to determine how much color information is lost in the subtraction."))
-                    Bindings.bindBidirectional(zoomDeltaColorModelComboBox.valueProperty(), zoomDeltaSampleChannelProperty)
-                    val zoomDeltaSampleFactorSpinner = Spinner<Number>(1.0, 50.0, 20.0)
-                    hbox.children.add(zoomDeltaSampleFactorSpinner)
-                    tooltip(zoomDeltaSampleFactorSpinner, "Factor used to exaggerate the delta value.")
-                    zoomDeltaSampleFactorSpinner.styleClass.add(Spinner.STYLE_CLASS_SPLIT_ARROWS_HORIZONTAL)
-                    zoomDeltaSampleFactorSpinner.prefWidth = 70.0
-                    zoomDeltaSampleFactorProperty.bind(zoomDeltaSampleFactorSpinner.valueProperty())
-                    rowIndex++
+                    rowIndex++;
+
                     mainGridPane.add(withCrosshair(zoomGradientImageView), 0, rowIndex)
                     mainGridPane.add(withCrosshair(zoomDeltaImageView), 1, rowIndex)
                     tooltip(zoomDeltaImageView, ("Shows the difference between the glow image and input image.\n"
@@ -1173,35 +1163,6 @@ class AstrophotographyApp : Application() {
 
                     var glowInterpolateRowIndex = 0
                     glowInterpolateRowIndex++
-//                    run {
-//                        val fixPointTableView = TableView(fixPoints)
-//                        glowInterpolateGridPane.add(fixPointTableView, 0, glowInterpolateRowIndex, 4, 1)
-//                        fixPointTableView.placeholder = Label("Add points to define the background gradient.")
-//                        fixPointTableView.prefHeight = 100.0
-//                        fixPointTableView.setRowFactory {
-//                            val tableRow = TableRow<FixPoint>()
-//                            val gotoMenuItem = MenuItem("Go To")
-//                            gotoMenuItem.onAction = EventHandler { setZoom(tableRow.item.x, tableRow.item.y) }
-//                            val removeMenuItem = MenuItem("Remove")
-//                            removeMenuItem.onAction = EventHandler { fixPoints.remove(tableRow.item) }
-//                            tableRow.contextMenu = ContextMenu(
-//                                    gotoMenuItem,
-//                                    removeMenuItem
-//                            )
-//                            tableRow
-//                        }
-//                        addTableColumn(fixPointTableView, "X", 40.0) { fixPoint: FixPoint -> ReadOnlyIntegerWrapper(fixPoint.x) }
-//                        addTableColumn(fixPointTableView, "Y", 40.0) { fixPoint: FixPoint -> ReadOnlyIntegerWrapper(fixPoint.y) }
-//                        addTableColumn(fixPointTableView, "Color", 50.0) { fixPoint: FixPoint ->
-//                            val rectangle = Rectangle(COLOR_INDICATOR_SIZE.toDouble(), COLOR_INDICATOR_SIZE.toDouble())
-//                            rectangle.fill = fixPoint.color
-//                            ReadOnlyObjectWrapper(rectangle)
-//                        }
-//                        addTableColumn(fixPointTableView, "Red", 70.0) { fixPoint: FixPoint -> ReadOnlyStringWrapper(PERCENT_FORMAT.format(fixPoint.color.red)) }
-//                        addTableColumn(fixPointTableView, "Green", 70.0) { fixPoint: FixPoint -> ReadOnlyStringWrapper(PERCENT_FORMAT.format(fixPoint.color.green)) }
-//                        addTableColumn(fixPointTableView, "Blue", 70.0) { fixPoint: FixPoint -> ReadOnlyStringWrapper(PERCENT_FORMAT.format(fixPoint.color.blue)) }
-//                        glowInterpolateRowIndex++
-//                    }
                     glowInterpolateRowIndex++
                     run {
                         run {
@@ -1246,53 +1207,80 @@ class AstrophotographyApp : Application() {
                 glowTabPane.selectionModel.select(glowGradientTab)
             }
             run {
-                val subtractionGridPane = GridPane()
-                subtractionGridPane.hgap = SPACING
-                subtractionGridPane.vgap = SPACING
+                val subtractionGridPane = gridpane {
+                    hgap = SPACING
+                    vgap = SPACING
+
+                    row {
+                        cell {
+                            label("Removal:")
+                        }
+                        cell {
+                            textfield {
+                                Bindings.bindBidirectional(textProperty(), removalFactorProperty, PERCENT_FORMAT)
+                            }
+                        }
+                    }
+                    row {
+                        cell {
+                            label("Sample Subtraction:")
+                        }
+                        cell {
+                            combobox(SubtractionStrategy.values()) {
+                                tooltip = tooltip("Different strategies to subtract the calculated glow from the input image.\n"
+                                        + "Subtract: Simply subtracts the RGB values of the glow.\n"
+                                        + "Subtract Linear: Subtracts the RGB values of the glow and corrects the remaining value linearly.\n"
+                                        + "Spline 1%: Uses a spline function to reduce the RGB value of the glow to 1%.\n"
+                                        + "Spline 1% + Stretch: Uses a spline function to reduce the RGB value of the glow to 1% - stretching the remaining value non-linearly.\n"
+                                        + "Spline 10%: Uses a spline function to reduce the RGB value of the glow to 10%.\n")
+                                Bindings.bindBidirectional(valueProperty(), sampleSubtractionStrategyProperty)
+                            }
+                        }
+                    }
+                    row {
+                        cell {
+                            label("Curve:")
+                        }
+                        cell {
+                            node(colorCurveCanvas) {
+                                tooltip(this,"Color curve shows how the RGB values for the current pixel from the input image (x-axis) to the output image (y-axis) are transformed.")
+                            }
+                        }
+                    }
+                    row {
+                        cell {
+                            label("Input:")
+                        }
+                        cell {
+                            node(inputHistogramCanvas) {
+                                tooltip(this, "Histogram of the RGB values over the entire input image.")
+                            }
+                        }
+                    }
+                    row {
+                        cell {
+                            label("Zoom Input:")
+                        }
+                        cell {
+                            node(zoomInputHistogramCanvas) {
+                                tooltip(this, "Histogram of the RGB values over the zoom input image.")
+                            }
+                        }
+                    }
+                    row {
+                        cell {
+                            label("Zoom Output:")
+                        }
+                        cell {
+                            node(zoomOutputHistogramCanvas) {
+                                tooltip(this, "Histogram of the RGB values over the zoom output image.")
+                            }
+                        }
+                    }
+
+                }
+
                 mainBox.children.add(subtractionGridPane)
-                var algorithmRowIndex = 0
-                run {
-                    subtractionGridPane.add(Label("Removal:"), 0, algorithmRowIndex)
-                    val removalFactorTextField = TextField()
-                    subtractionGridPane.add(removalFactorTextField, 1, algorithmRowIndex)
-                    Bindings.bindBidirectional(removalFactorTextField.textProperty(), removalFactorProperty, PERCENT_FORMAT)
-                    algorithmRowIndex++
-                }
-                run {
-                    subtractionGridPane.add(Label("Sample Subtraction:"), 0, algorithmRowIndex)
-                    val sampleSubtractionComboBox = ComboBox(FXCollections
-                            .observableArrayList(*SubtractionStrategy.values()))
-                    subtractionGridPane.add(sampleSubtractionComboBox, 1, algorithmRowIndex)
-                    tooltip(sampleSubtractionComboBox, ("Different strategies to subtract the calculated glow from the input image.\n"
-                            + "Subtract: Simply subtracts the RGB values of the glow.\n"
-                            + "Subtract Linear: Subtracts the RGB values of the glow and corrects the remaining value linearly.\n"
-                            + "Spline 1%: Uses a spline function to reduce the RGB value of the glow to 1%.\n"
-                            + "Spline 1% + Stretch: Uses a spline function to reduce the RGB value of the glow to 1% - stretching the remaining value non-linearly.\n"
-                            + "Spline 10%: Uses a spline function to reduce the RGB value of the glow to 10%.\n"))
-                    Bindings.bindBidirectional(sampleSubtractionComboBox.valueProperty(), sampleSubtractionStrategyProperty)
-                    algorithmRowIndex++
-                }
-                run {
-                    subtractionGridPane.add(Label("Curve:"), 0, algorithmRowIndex)
-                    subtractionGridPane.add(colorCurveCanvas, 1, algorithmRowIndex)
-                    tooltip(colorCurveCanvas, "Color curve shows how the RGB values for the current pixel from the input image (x-axis) to the output image (y-axis) are transformed.")
-                    algorithmRowIndex++
-
-                    subtractionGridPane.add(Label("Input:"), 0, algorithmRowIndex)
-                    subtractionGridPane.add(inputHistogramCanvas, 1, algorithmRowIndex)
-                    tooltip(inputHistogramCanvas, "Histogram of the RGB values over the entire input image.")
-                    algorithmRowIndex++
-
-                    subtractionGridPane.add(Label("Zoom Input:"), 0, algorithmRowIndex)
-                    subtractionGridPane.add(zoomInputHistogramCanvas, 1, algorithmRowIndex)
-                    tooltip(zoomInputHistogramCanvas, "Histogram of the RGB values over the zoom input image.")
-                    algorithmRowIndex++
-
-                    subtractionGridPane.add(Label("Zoom Output:"), 0, algorithmRowIndex)
-                    subtractionGridPane.add(zoomOutputHistogramCanvas, 1, algorithmRowIndex)
-                    tooltip(zoomOutputHistogramCanvas, "Histogram of the RGB values over the zoom output image.")
-                    algorithmRowIndex++
-                }
             }
         }
 

@@ -1,5 +1,6 @@
 package ch.obermuhlner.astro.javafx
 
+import javafx.collections.FXCollections
 import javafx.collections.ObservableList
 import javafx.scene.Node
 import javafx.scene.control.*
@@ -9,19 +10,23 @@ import javafx.scene.layout.VBox
 import javafx.scene.shape.Circle
 import javafx.scene.shape.Rectangle
 
+fun <T: Node> node(node: T, initializer: T.() -> Unit)
+        = node.apply(initializer)
+
+
 fun hbox(initializer: HBox.() -> Unit)
-    = HBox().apply(initializer)
+        = HBox().apply(initializer)
 
 
 fun hbox(spacing: Double, initializer: HBox.() -> Unit)
-    = HBox(spacing).apply(initializer)
+        = HBox(spacing).apply(initializer)
 
 
 fun vbox(initializer: VBox.() -> Unit)
-    = VBox().apply(initializer)
+        = VBox().apply(initializer)
 
 fun vbox(spacing: Double, initializer: VBox.() -> Unit)
-    = VBox(spacing).apply(initializer)
+        = VBox(spacing).apply(initializer)
 
 
 fun label(text: String)
@@ -32,26 +37,42 @@ fun label(text: String, initializer: Label.() -> Unit)
 
 
 fun button(initializer: Button.() -> Unit)
-    = Button().apply(initializer)
+        = Button().apply(initializer)
 
 fun button(text: String, initializer: Button.() -> Unit)
-    = Button(text).apply(initializer)
+        = Button(text).apply(initializer)
 
+
+fun spinner(min: Double, max: Double, initialValue: Double, initializer: Spinner<Number>.() -> Unit)
+        = Spinner<Number>(min, max, initialValue).apply(initializer)
+
+fun spinner(min: Int, max: Int, initialValue: Int, initializer: Spinner<Number>.() -> Unit)
+        = Spinner<Number>(min, max, initialValue).apply(initializer)
+
+
+fun <T> combobox(items: Array<T>, initializer: ComboBox<T>.() -> Unit)
+        = combobox(FXCollections.observableArrayList(*items), initializer)
+
+fun <T> combobox(items: List<T>, initializer: ComboBox<T>.() -> Unit)
+        = combobox(FXCollections.observableArrayList(items), initializer)
+
+fun <T> combobox(items: ObservableList<T>, initializer: ComboBox<T>.() -> Unit)
+        = ComboBox(items).apply(initializer)
 
 fun textfield(initializer: TextField.() -> Unit)
         = TextField().apply(initializer)
 
 fun rectangle(width: Double, height: Double, initializer: Rectangle.() -> Unit)
-    = Rectangle(width, height).apply(initializer)
+        = Rectangle(width, height).apply(initializer)
 
 fun circle(radius: Double, initializer: Circle.() -> Unit)
-    = Circle(radius).apply(initializer)
+        = Circle(radius).apply(initializer)
 
 //fun <S> tableview(initializer: TableView<S>.() -> Unit)
 //    = TableViewContext<S>().apply(initializer)
 
 fun <S> tableview(items: ObservableList<S>, initializer: TableView<S>.() -> Unit)
-    = TableViewContext<S>(items).apply(initializer)
+        = TableViewContext<S>(items).apply(initializer)
 
 class TableViewContext<S>(items: ObservableList<S>) : TableView<S>(items) {
     fun <V> tablecolumn(header: String, initializer: TableColumn<S, V>.() -> Unit): TableColumn<S, V> {
@@ -69,7 +90,7 @@ fun tab(name: String, initializer: Tab.() -> Unit)
 
 
 fun gridpane(initializer: GridPaneContext.() -> Unit): GridPane
-    = GridPaneContext().apply(initializer)
+        = GridPaneContext().apply(initializer)
 
 class GridPaneContext : GridPane() {
     private var rowIndex = 0

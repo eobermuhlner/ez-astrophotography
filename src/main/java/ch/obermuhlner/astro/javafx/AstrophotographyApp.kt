@@ -1078,84 +1078,131 @@ class AstrophotographyApp : Application() {
                     }
                 }
                 run {
-                    val glowBlurGridPane = GridPane()
-                    glowBlurGridPane.hgap = SPACING
-                    glowBlurGridPane.vgap = SPACING
+                    val glowBlurGridPane = gridpane {
+                        hgap = SPACING
+                        vgap = SPACING
+
+                        row {
+                            cell {
+                                label("Despeckle Radius:")
+                            }
+                            cell {
+                                textfield {
+                                    Bindings.bindBidirectional(textProperty(), despeckleRadiusProperty, INTEGER_FORMAT)
+                                }
+                            }
+                        }
+                        row {
+                            cell {
+                                label("Blur Radius:")
+                            }
+                            cell {
+                                textfield {
+                                    Bindings.bindBidirectional(textProperty(), blurRadiusProperty, INTEGER_FORMAT)
+                                }
+                            }
+                        }
+                    }
                     glowBlurTab = Tab("Blur", glowBlurGridPane)
                     glowTabPane.tabs.add(glowBlurTab)
                     glowBlurTab.tooltip = tooltip(("Blurs the input image to calculate the glow image.\n"
                             + "This is a good strategy for images where the object of interest occupies only a small area."))
-                    var glowBlurRowIndex = 0
-                    run {
-                        glowBlurGridPane.add(Label("Despeckle Radius:"), 0, glowBlurRowIndex)
-                        val despeckleRadiusTextField = TextField()
-                        glowBlurGridPane.add(despeckleRadiusTextField, 1, glowBlurRowIndex)
-                        Bindings.bindBidirectional(despeckleRadiusTextField.textProperty(), despeckleRadiusProperty, INTEGER_FORMAT)
-                        glowBlurRowIndex++
-
-                        glowBlurGridPane.add(Label("Blur Radius:"), 0, glowBlurRowIndex)
-                        val blurRadiusTextField = TextField()
-                        glowBlurGridPane.add(blurRadiusTextField, 1, glowBlurRowIndex)
-                        Bindings.bindBidirectional(blurRadiusTextField.textProperty(), blurRadiusProperty, INTEGER_FORMAT)
-                        glowBlurRowIndex++
-                    }
                 }
                 run {
-                    val glowInterpolateGridPane = GridPane()
-                    glowInterpolateGridPane.hgap = SPACING
-                    glowInterpolateGridPane.vgap = SPACING
+                    val glowInterpolateGridPane = gridpane {
+                        hgap = SPACING
+                        vgap = SPACING
+
+                        row {
+                            cell {
+                                hbox {
+                                    children += button("Add") {
+                                        tooltip = tooltip("Adds a new fix point to interpolate the glow.\n"
+                                                + "Make sure to set points in areas that only contain background glow and no nebula or stars.\n"
+                                                + "It is best to define an odd number of points - three points is usually a good number.")
+                                        onAction = EventHandler {
+                                            val x = zoomCenterXProperty.get()
+                                            val y = zoomCenterYProperty.get()
+                                            addFixPoint(x, y)
+                                        }
+                                    }
+                                    children += button("Clear") {
+                                        tooltip = tooltip("Removes all fix points.")
+                                        onAction = EventHandler {
+                                            fixPoints.clear()
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        row {
+                            cell {
+                                tableview(fixPoints) {
+                                    placeholder = Label("Add points to define the background gradient.")
+                                    prefHeight = 100.0
+                                    setRowFactory {
+                                        val tableRow = TableRow<FixPoint>()
+                                        val gotoMenuItem = MenuItem("Go To")
+                                        gotoMenuItem.onAction = EventHandler { setZoom(tableRow.item.x, tableRow.item.y) }
+                                        val removeMenuItem = MenuItem("Remove")
+                                        removeMenuItem.onAction = EventHandler { fixPoints.remove(tableRow.item) }
+                                        tableRow.contextMenu = ContextMenu(
+                                                gotoMenuItem,
+                                                removeMenuItem
+                                        )
+                                        tableRow
+                                    }
+                                    addTableColumn(this, "X", 40.0) { fixPoint: FixPoint -> ReadOnlyIntegerWrapper(fixPoint.x) }
+                                    addTableColumn(this, "Y", 40.0) { fixPoint: FixPoint -> ReadOnlyIntegerWrapper(fixPoint.y) }
+                                    addTableColumn(this, "Color", 50.0) { fixPoint: FixPoint ->
+                                        val rectangle = Rectangle(COLOR_INDICATOR_SIZE.toDouble(), COLOR_INDICATOR_SIZE.toDouble())
+                                        rectangle.fill = fixPoint.color
+                                        ReadOnlyObjectWrapper(rectangle)
+                                    }
+                                    addTableColumn(this, "Red", 70.0) { fixPoint: FixPoint -> ReadOnlyStringWrapper(PERCENT_FORMAT.format(fixPoint.color.red)) }
+                                    addTableColumn(this, "Green", 70.0) { fixPoint: FixPoint -> ReadOnlyStringWrapper(PERCENT_FORMAT.format(fixPoint.color.green)) }
+                                    addTableColumn(this, "Blue", 70.0) { fixPoint: FixPoint -> ReadOnlyStringWrapper(PERCENT_FORMAT.format(fixPoint.color.blue)) }
+                                }
+                            }
+                        }
+                    }
                     glowGradientTab = Tab("Gradient", glowInterpolateGridPane)
                     glowTabPane.tabs.add(glowGradientTab)
                     glowGradientTab.tooltip = tooltip(("Interpolates the glow between two or more points.\n"
                             + "This is a good strategy for images with a glow that shows a strong gradient."))
+
                     var glowInterpolateRowIndex = 0
-                    run {
-                        val fixPointToolbar = HBox(SPACING)
-                        glowInterpolateGridPane.add(fixPointToolbar, 0, glowInterpolateRowIndex, 4, 1)
-                        val addFixPointButton = Button("Add")
-                        fixPointToolbar.children.add(addFixPointButton)
-                        tooltip(addFixPointButton, ("Adds a new fix point to interpolate the glow.\n"
-                                + "Make sure to set points in areas that only contain background glow and no nebula or stars.\n"
-                                + "It is best to define an odd number of points - three points is usually a good number."))
-                        addFixPointButton.onAction = EventHandler {
-                            val x = zoomCenterXProperty.get()
-                            val y = zoomCenterYProperty.get()
-                            addFixPoint(x, y)
-                        }
-                        val clearFixPointButton = Button("Clear")
-                        fixPointToolbar.children.add(clearFixPointButton)
-                        clearFixPointButton.onAction = EventHandler { fixPoints.clear() }
-                        glowInterpolateRowIndex++
-                    }
-                    run {
-                        val fixPointTableView = TableView(fixPoints)
-                        glowInterpolateGridPane.add(fixPointTableView, 0, glowInterpolateRowIndex, 4, 1)
-                        fixPointTableView.placeholder = Label("Add points to define the background gradient.")
-                        fixPointTableView.prefHeight = 100.0
-                        fixPointTableView.setRowFactory {
-                            val tableRow = TableRow<FixPoint>()
-                            val gotoMenuItem = MenuItem("Go To")
-                            gotoMenuItem.onAction = EventHandler { setZoom(tableRow.item.x, tableRow.item.y) }
-                            val removeMenuItem = MenuItem("Remove")
-                            removeMenuItem.onAction = EventHandler { fixPoints.remove(tableRow.item) }
-                            tableRow.contextMenu = ContextMenu(
-                                    gotoMenuItem,
-                                    removeMenuItem
-                            )
-                            tableRow
-                        }
-                        addTableColumn(fixPointTableView, "X", 40.0) { fixPoint: FixPoint -> ReadOnlyIntegerWrapper(fixPoint.x) }
-                        addTableColumn(fixPointTableView, "Y", 40.0) { fixPoint: FixPoint -> ReadOnlyIntegerWrapper(fixPoint.y) }
-                        addTableColumn(fixPointTableView, "Color", 50.0) { fixPoint: FixPoint ->
-                            val rectangle = Rectangle(COLOR_INDICATOR_SIZE.toDouble(), COLOR_INDICATOR_SIZE.toDouble())
-                            rectangle.fill = fixPoint.color
-                            ReadOnlyObjectWrapper(rectangle)
-                        }
-                        addTableColumn(fixPointTableView, "Red", 70.0) { fixPoint: FixPoint -> ReadOnlyStringWrapper(PERCENT_FORMAT.format(fixPoint.color.red)) }
-                        addTableColumn(fixPointTableView, "Green", 70.0) { fixPoint: FixPoint -> ReadOnlyStringWrapper(PERCENT_FORMAT.format(fixPoint.color.green)) }
-                        addTableColumn(fixPointTableView, "Blue", 70.0) { fixPoint: FixPoint -> ReadOnlyStringWrapper(PERCENT_FORMAT.format(fixPoint.color.blue)) }
-                        glowInterpolateRowIndex++
-                    }
+                    glowInterpolateRowIndex++
+//                    run {
+//                        val fixPointTableView = TableView(fixPoints)
+//                        glowInterpolateGridPane.add(fixPointTableView, 0, glowInterpolateRowIndex, 4, 1)
+//                        fixPointTableView.placeholder = Label("Add points to define the background gradient.")
+//                        fixPointTableView.prefHeight = 100.0
+//                        fixPointTableView.setRowFactory {
+//                            val tableRow = TableRow<FixPoint>()
+//                            val gotoMenuItem = MenuItem("Go To")
+//                            gotoMenuItem.onAction = EventHandler { setZoom(tableRow.item.x, tableRow.item.y) }
+//                            val removeMenuItem = MenuItem("Remove")
+//                            removeMenuItem.onAction = EventHandler { fixPoints.remove(tableRow.item) }
+//                            tableRow.contextMenu = ContextMenu(
+//                                    gotoMenuItem,
+//                                    removeMenuItem
+//                            )
+//                            tableRow
+//                        }
+//                        addTableColumn(fixPointTableView, "X", 40.0) { fixPoint: FixPoint -> ReadOnlyIntegerWrapper(fixPoint.x) }
+//                        addTableColumn(fixPointTableView, "Y", 40.0) { fixPoint: FixPoint -> ReadOnlyIntegerWrapper(fixPoint.y) }
+//                        addTableColumn(fixPointTableView, "Color", 50.0) { fixPoint: FixPoint ->
+//                            val rectangle = Rectangle(COLOR_INDICATOR_SIZE.toDouble(), COLOR_INDICATOR_SIZE.toDouble())
+//                            rectangle.fill = fixPoint.color
+//                            ReadOnlyObjectWrapper(rectangle)
+//                        }
+//                        addTableColumn(fixPointTableView, "Red", 70.0) { fixPoint: FixPoint -> ReadOnlyStringWrapper(PERCENT_FORMAT.format(fixPoint.color.red)) }
+//                        addTableColumn(fixPointTableView, "Green", 70.0) { fixPoint: FixPoint -> ReadOnlyStringWrapper(PERCENT_FORMAT.format(fixPoint.color.green)) }
+//                        addTableColumn(fixPointTableView, "Blue", 70.0) { fixPoint: FixPoint -> ReadOnlyStringWrapper(PERCENT_FORMAT.format(fixPoint.color.blue)) }
+//                        glowInterpolateRowIndex++
+//                    }
+                    glowInterpolateRowIndex++
                     run {
                         run {
                             glowInterpolateGridPane.add(Label("Point Finder:"), 0, glowInterpolateRowIndex)
@@ -1175,6 +1222,7 @@ class AstrophotographyApp : Application() {
                         }
                     }
                 }
+
                 glowTabPane.selectionModel.selectedItemProperty().addListener { _, _, newValue: Tab ->
                     when {
                         newValue === glowSingleColorTab -> {

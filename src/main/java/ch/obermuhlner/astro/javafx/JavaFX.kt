@@ -29,11 +29,14 @@ fun vbox(spacing: Double, initializer: VBox.() -> Unit)
         = VBox(spacing).apply(initializer)
 
 
+fun label(initializer: Label.() -> Unit)
+        = Label().apply(initializer)
+
 fun label(text: String)
         = Label(text)
 
 fun label(text: String, initializer: Label.() -> Unit)
-    = Label(text).apply(initializer)
+        = Label(text).apply(initializer)
 
 
 fun button(initializer: Button.() -> Unit)

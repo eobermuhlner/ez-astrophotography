@@ -790,7 +790,6 @@ class AstrophotographyApp : Application() {
     }
 
     private fun createEditor(): Node {
-        val mainBox = HBox(SPACING)
         zoomInputImage = WritableImage(ZOOM_WIDTH, ZOOM_HEIGHT)
         zoomInputDoubleImage = if (ACCURATE_PREVIEW) {
             WriteThroughArrayDoubleImage(JavaFXWritableDoubleImage(zoomInputImage), ColorModel.RGB)
@@ -808,479 +807,497 @@ class AstrophotographyApp : Application() {
         zoomDeltaDoubleImage = JavaFXWritableDoubleImage(zoomDeltaImage)
         zoomDeltaImageView.image = zoomDeltaImage
 
-        run {
-            val mainGridPane = GridPane()
-            mainGridPane.hgap = SPACING
-            mainGridPane.vgap = SPACING
-            mainBox.children.add(mainGridPane)
-            var rowIndex = 0
-            run {
-                val sampleHBox = hbox(SPACING) {
-                    children += label("X:")
-                    children += textfield {
-                        prefWidth = 60.0
-                        Bindings.bindBidirectional(textProperty(), zoomCenterXProperty, INTEGER_FORMAT)
-                    }
+        val hbox = hbox(SPACING) {
+            children += gridpane {
+                hgap = SPACING
+                vgap = SPACING
 
-                    children += label("Y:")
-                    children += textfield {
-                        prefWidth = 60.0
-                        Bindings.bindBidirectional(textProperty(), zoomCenterYProperty, INTEGER_FORMAT)
-                    }
+                row {
+                    cell(4, 1) {
+                        hbox(SPACING) {
+                            children += label("X:")
+                            children += textfield {
+                                prefWidth = 60.0
+                                Bindings.bindBidirectional(textProperty(), zoomCenterXProperty, INTEGER_FORMAT)
+                            }
 
-                    children += label("Radius:")
-                    children += node(sampleRadiusSpinner) {
-                        tooltip = tooltip("Radius of the sample area used to calculate the color of gradient fix points.\n"
-                                + "The width and height of the sample area will be: 2*radius + 1")
-                        styleClass.add(Spinner.STYLE_CLASS_SPLIT_ARROWS_HORIZONTAL)
-                        prefWidth = 70.0
-                        sampleRadiusProperty.bind(this.valueProperty())
+                            children += label("Y:")
+                            children += textfield {
+                                prefWidth = 60.0
+                                Bindings.bindBidirectional(textProperty(), zoomCenterYProperty, INTEGER_FORMAT)
+                            }
+
+                            children += label("Radius:")
+                            children += node(sampleRadiusSpinner) {
+                                tooltip = tooltip("Radius of the sample area used to calculate the color of gradient fix points.\n"
+                                        + "The width and height of the sample area will be: 2*radius + 1")
+                                styleClass.add(Spinner.STYLE_CLASS_SPLIT_ARROWS_HORIZONTAL)
+                                prefWidth = 70.0
+                                sampleRadiusProperty.bind(this.valueProperty())
+                            }
+                        }
+                    }
+                }
+                row {
+                    cell {
+                        label("Zoom:")
+                    }
+                    cell {
+                        label("Output Preview:")
+                    }
+                }
+                row {
+                    cell {
+                        withCrosshair(zoomInputImageView)
+                    }
+                    cell {
+                        withCrosshair(zoomOutputImageView)
                     }
                 }
 
-                mainGridPane.add(sampleHBox, 0, rowIndex, 4, 1)
-                rowIndex++
+                row {
+                    cell {
+                        label("Glow:")
+                    }
+                    cell {
+                        hbox(SPACING) {
+                            children += label("Delta:")
+                            children += combobox(SampleChannel.values()) {
+                                tooltip = tooltip("Color channel used to show the delta between the input image and glow image.\n"
+                                        + "The brightness delta is useful to determine how much color information is lost in the subtraction.")
+                                Bindings.bindBidirectional(valueProperty(), zoomDeltaSampleChannelProperty)
+                            }
+                            children += spinner(1.0, 50.0, 20.0) {
+                                tooltip = tooltip("Factor used to exaggerate the delta value.")
+                                styleClass.add(Spinner.STYLE_CLASS_SPLIT_ARROWS_HORIZONTAL)
+                                prefWidth = 70.0
+                                zoomDeltaSampleFactorProperty.bind(valueProperty())
+                            }
+                        }
+                    }
+                }
+                row {
+                    cell {
+                        withCrosshair(zoomGradientImageView)
+                    }
+                    cell {
+                        node(withCrosshair(zoomDeltaImageView)) {
+                            tooltip(this, "Shows the difference between the glow image and input image.\n"
+                                    + "The channel to calculate the difference can be selected: Red, Green, Blue, Hue, Saturation, Brightness\n"
+                                    + "Blue colors indicate a positive, red a negative difference."
+                                    + "If the delta channel is set to the 'Brightness', red colors indicate that the output image brightness will be < 0 and therefore information is lost.")
+                        }
+                    }
+                }
+                row {
+                    cell(4, 1) {
+                        tabpane {
+                            tabClosingPolicy = TabPane.TabClosingPolicy.UNAVAILABLE
+                            val glowSingleColorTab = tab("Single Color") {
+                                tooltip = tooltip("Determine a single color that will be used uniformly to estimate the glow.\n"
+                                        + "This is a good strategy if the glow is uniform over the entire image.")
+                                content = gridpane {
+                                    hgap = SPACING
+                                    vgap = SPACING
+
+                                    row {
+                                        cell {
+                                            hbox(SPACING) {
+                                                children += button("Median All") {
+                                                    tooltip = tooltip("Finds the median color of all pixels in the input image.")
+                                                    onAction = EventHandler {
+                                                        updateSingleGlowColor {
+                                                            if (medianAllColor == null) {
+                                                                medianAllColor = toJavafxColor(inputDoubleImage.medianPixel(ColorModel.RGB))
+                                                            }
+                                                            medianAllColor!!
+                                                        }
+                                                        singleGlowColorDescriptionProperty.set("Median All " + inputDoubleImage.width + "x" + inputDoubleImage.height)
+                                                    }
+                                                }
+
+                                                children += button("Average All") {
+                                                    tooltip = tooltip("Finds the average color of all pixels in the input image.")
+                                                    onAction = EventHandler {
+                                                        updateSingleGlowColor {
+                                                            if (averageAllColor == null) {
+                                                                averageAllColor = toJavafxColor(inputDoubleImage.averagePixel(ColorModel.RGB))
+                                                            }
+                                                            averageAllColor!!
+                                                        }
+                                                        singleGlowColorDescriptionProperty.set("Average All " + inputDoubleImage.width + "x" + inputDoubleImage.height)
+                                                    }
+                                                }
+
+                                                children += button("Darkest All") {
+                                                    tooltip = tooltip("Finds the darkest color of all pixels in the input image.")
+                                                    onAction = EventHandler {
+                                                        updateSingleGlowColor {
+                                                            if (darkestAllColor == null) {
+                                                                darkestAllColor = toJavafxColor(inputDoubleImage.darkestPixel())
+                                                            }
+                                                            darkestAllColor!!
+                                                        }
+                                                        singleGlowColorDescriptionProperty.set("Darkest All " + inputDoubleImage.width + "x" + inputDoubleImage.height)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    row {
+                                        cell(2, 1) {
+                                            hbox(SPACING) {
+                                                children += button("Median Zoom") {
+                                                    tooltip = tooltip("Finds the median color of the pixels in the zoom input image.")
+                                                    onAction = EventHandler {
+                                                        updateSingleGlowColor { toJavafxColor(zoomInputDoubleImage.medianPixel()) }
+                                                        val width = ZOOM_WIDTH
+                                                        val height = ZOOM_HEIGHT
+                                                        val x = zoomCenterXProperty.get() - width / 2
+                                                        val y = zoomCenterYProperty.get() - height / 2
+                                                        singleGlowColorDescriptionProperty.set("Median Zoom " + x + "," + y + " " + width + "x" + height)
+                                                    }
+                                                }
+
+                                                children += button("Average Zoom") {
+                                                    tooltip = tooltip("Finds the average color of the pixels in the zoom input image.")
+                                                    onAction = EventHandler {
+                                                        updateSingleGlowColor { toJavafxColor(zoomInputDoubleImage.averagePixel()) }
+                                                        val width: Int = ZOOM_WIDTH
+                                                        val height: Int = ZOOM_HEIGHT
+                                                        val x: Int = zoomCenterXProperty.get() - width / 2
+                                                        val y: Int = zoomCenterYProperty.get() - height / 2
+                                                        singleGlowColorDescriptionProperty.set("Average Zoom " + x + "," + y + " " + width + "x" + height)
+                                                    }
+                                                }
+
+                                                children += button("Darkest Zoom") {
+                                                    tooltip = tooltip("Finds the darkest color of the pixels in the zoom input image.")
+                                                    onAction = EventHandler {
+                                                        updateSingleGlowColor { toJavafxColor(zoomInputDoubleImage.darkestPixel()) }
+                                                        val width: Int = ZOOM_WIDTH
+                                                        val height: Int = ZOOM_HEIGHT
+                                                        val x: Int = zoomCenterXProperty.get() - width / 2
+                                                        val y: Int = zoomCenterYProperty.get() - height / 2
+                                                        singleGlowColorDescriptionProperty.set("Darkest Zoom " + x + "," + y + " " + width + "x" + height)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+
+                                    row {
+                                        cell(2, 1) {
+                                            hbox(SPACING) {
+                                                children += button("Median Sample") {
+                                                    tooltip = tooltip("Finds the median color of the pixels in the sample radius of the zoom input image.")
+                                                    onAction = EventHandler {
+                                                        val zx = ZOOM_WIDTH / 2
+                                                        val zy = ZOOM_HEIGHT / 2
+                                                        val r = sampleRadiusProperty.get()
+                                                        updateSingleGlowColor { toJavafxColor(zoomInputDoubleImage.croppedImage(zx - r, zy - r, r + r + 1, r + r + 1).medianPixel()) }
+                                                        val width = r + r + 1
+                                                        val height = r + r + 1
+                                                        val x = zoomCenterXProperty.get() - width / 2
+                                                        val y = zoomCenterYProperty.get() - height / 2
+                                                        singleGlowColorDescriptionProperty.set("Median Sample " + x + "," + y + " " + width + "x" + height)
+                                                    }
+                                                }
+
+                                                children += button("Average Sample") {
+                                                    tooltip = tooltip("Finds the average color of the pixels in the sample radius of the zoom input image.")
+                                                    onAction = EventHandler {
+                                                        val zx: Int = ZOOM_WIDTH / 2
+                                                        val zy: Int = ZOOM_HEIGHT / 2
+                                                        val r: Int = sampleRadiusProperty.get()
+                                                        updateSingleGlowColor { toJavafxColor(zoomInputDoubleImage.croppedImage(zx - r, zy - r, r + r + 1, r + r + 1).averagePixel()) }
+                                                        val width: Int = r + r + 1
+                                                        val height: Int = r + r + 1
+                                                        val x: Int = zoomCenterXProperty.get() - width / 2
+                                                        val y: Int = zoomCenterYProperty.get() - height / 2
+                                                        singleGlowColorDescriptionProperty.set("Average Sample " + x + "," + y + " " + width + "x" + height)
+                                                    }
+                                                }
+
+                                                children += button("Darkest Sample") {
+                                                    tooltip = tooltip("Finds the darkest color of the pixels in the sample radius of the zoom input image.")
+                                                    onAction = EventHandler {
+                                                        val zx: Int = ZOOM_WIDTH / 2
+                                                        val zy: Int = ZOOM_HEIGHT / 2
+                                                        val r: Int = sampleRadiusProperty.get()
+                                                        updateSingleGlowColor { toJavafxColor(zoomInputDoubleImage.croppedImage(zx - r, zy - r, r + r + 1, r + r + 1).darkestPixel()) }
+                                                        val width: Int = r + r + 1
+                                                        val height: Int = r + r + 1
+                                                        val x: Int = zoomCenterXProperty.get() - width / 2
+                                                        val y: Int = zoomCenterYProperty.get() - height / 2
+                                                        singleGlowColorDescriptionProperty.set("Darkest Sample " + x + "," + y + " " + width + "x" + height)
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    row {
+                                        cell {
+                                            label("Glow Color:")
+                                        }
+                                        cell {
+                                            rectangle(COLOR_INDICATOR_SIZE.toDouble(), COLOR_INDICATOR_SIZE.toDouble()) {
+                                                fillProperty().bind(singleGlowColorProperty)
+                                            }
+                                        }
+                                    }
+                                    row {
+                                        cell {
+                                            label("Glow Red:")
+                                        }
+                                        cell {
+                                            label {
+                                                singleGlowColorProperty.addListener { _, _, newValue: Color? -> text = PERCENT_FORMAT.format(newValue!!.red) }
+                                            }
+                                        }
+                                    }
+                                    row {
+                                        cell {
+                                            label("Glow Green:")
+                                        }
+                                        cell {
+                                            label {
+                                                singleGlowColorProperty.addListener { _, _, newValue: Color? -> text = PERCENT_FORMAT.format(newValue!!.green) }
+                                            }
+                                        }
+                                    }
+                                    row {
+                                        cell {
+                                            label("Glow Blue:")
+                                        }
+                                        cell {
+                                            label {
+                                                singleGlowColorProperty.addListener { _, _, newValue: Color? -> text = PERCENT_FORMAT.format(newValue!!.blue) }
+                                            }
+                                        }
+                                    }
+                                    row {
+                                        cell {
+                                            label("Glow Description:")
+                                        }
+                                        cell {
+                                            label {
+                                                textProperty().bind(singleGlowColorDescriptionProperty)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            val glowBlurTab = tab("Blur") {
+                                tooltip = tooltip("Blurs the input image to calculate the glow image.\n"
+                                        + "This is a good strategy for images where the object of interest occupies only a small area.")
+                                content = gridpane {
+                                    hgap = SPACING
+                                    vgap = SPACING
+
+                                    row {
+                                        cell {
+                                            label("Despeckle Radius:")
+                                        }
+                                        cell {
+                                            textfield {
+                                                Bindings.bindBidirectional(textProperty(), despeckleRadiusProperty, INTEGER_FORMAT)
+                                            }
+                                        }
+                                    }
+                                    row {
+                                        cell {
+                                            label("Blur Radius:")
+                                        }
+                                        cell {
+                                            textfield {
+                                                Bindings.bindBidirectional(textProperty(), blurRadiusProperty, INTEGER_FORMAT)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            val glowGradientTab = tab("Gradient") {
+                                tooltip = tooltip("Interpolates the glow between two or more points.\n"
+                                        + "This is a good strategy for images with a glow that shows a strong gradient.")
+                                content = gridpane {
+                                    hgap = SPACING
+                                    vgap = SPACING
+
+                                    row {
+                                        cell(2, 1) {
+                                            hbox {
+                                                children += button("Add") {
+                                                    tooltip = tooltip("Adds a new fix point to interpolate the glow.\n"
+                                                            + "Make sure to set points in areas that only contain background glow and no nebula or stars.\n"
+                                                            + "It is best to define an odd number of points - three points is usually a good number.")
+                                                    onAction = EventHandler {
+                                                        val x = zoomCenterXProperty.get()
+                                                        val y = zoomCenterYProperty.get()
+                                                        addFixPoint(x, y)
+                                                    }
+                                                }
+                                                children += button("Clear") {
+                                                    tooltip = tooltip("Removes all fix points.")
+                                                    onAction = EventHandler {
+                                                        fixPoints.clear()
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                    row {
+                                        cell(2, 1) {
+                                            tableview(fixPoints) {
+                                                placeholder = Label("Add points to define the background gradient.")
+                                                prefHeight = 100.0
+                                                setRowFactory {
+                                                    val tableRow = TableRow<FixPoint>()
+                                                    val gotoMenuItem = MenuItem("Go To")
+                                                    gotoMenuItem.onAction = EventHandler { setZoom(tableRow.item.x, tableRow.item.y) }
+                                                    val removeMenuItem = MenuItem("Remove")
+                                                    removeMenuItem.onAction = EventHandler { fixPoints.remove(tableRow.item) }
+                                                    tableRow.contextMenu = ContextMenu(
+                                                            gotoMenuItem,
+                                                            removeMenuItem
+                                                    )
+                                                    tableRow
+                                                }
+                                                addTableColumn(this, "X", 40.0) { fixPoint: FixPoint -> ReadOnlyIntegerWrapper(fixPoint.x) }
+                                                addTableColumn(this, "Y", 40.0) { fixPoint: FixPoint -> ReadOnlyIntegerWrapper(fixPoint.y) }
+                                                addTableColumn(this, "Color", 50.0) { fixPoint: FixPoint ->
+                                                    val rectangle = Rectangle(COLOR_INDICATOR_SIZE.toDouble(), COLOR_INDICATOR_SIZE.toDouble())
+                                                    rectangle.fill = fixPoint.color
+                                                    ReadOnlyObjectWrapper(rectangle)
+                                                }
+                                                addTableColumn(this, "Red", 70.0) { fixPoint: FixPoint -> ReadOnlyStringWrapper(PERCENT_FORMAT.format(fixPoint.color.red)) }
+                                                addTableColumn(this, "Green", 70.0) { fixPoint: FixPoint -> ReadOnlyStringWrapper(PERCENT_FORMAT.format(fixPoint.color.green)) }
+                                                addTableColumn(this, "Blue", 70.0) { fixPoint: FixPoint -> ReadOnlyStringWrapper(PERCENT_FORMAT.format(fixPoint.color.blue)) }
+                                            }
+                                        }
+                                    }
+                                    row {
+                                        cell {
+                                            label("Point Finder:")
+                                        }
+                                        cell {
+                                            combobox(PointFinderStrategy.values()) {
+                                                Bindings.bindBidirectional(valueProperty(), pointFinderStrategyProperty)
+                                            }
+                                        }
+                                    }
+                                    row {
+                                        cell {
+                                            label("Interpolation Power:")
+                                        }
+                                        cell {
+                                            textfield {
+                                                Bindings.bindBidirectional(textProperty(), interpolationPowerProperty, DOUBLE_FORMAT)
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+
+                            tabs += glowSingleColorTab
+                            tabs += glowBlurTab
+                            tabs += glowGradientTab
+
+                            selectionModel.selectedItemProperty().addListener { _, _, newValue: Tab ->
+                                when {
+                                    newValue === glowSingleColorTab -> {
+                                        glowStrategyProperty.set(GlowStrategy.SingleColor)
+                                    }
+                                    newValue === glowBlurTab -> {
+                                        glowStrategyProperty.set(GlowStrategy.Blur)
+                                    }
+                                    newValue === glowGradientTab -> {
+                                        glowStrategyProperty.set(GlowStrategy.Gradient)
+                                    }
+                                }
+                            }
+                            glowStrategyProperty.addListener { _, _, newValue: GlowStrategy? ->
+                                when (newValue) {
+                                    GlowStrategy.SingleColor -> selectionModel.select(glowSingleColorTab)
+                                    GlowStrategy.Blur -> selectionModel.select(glowBlurTab)
+                                    GlowStrategy.Gradient -> selectionModel.select(glowGradientTab)
+                                }
+                            }
+                            selectionModel.select(glowGradientTab)
+                        }
+                    }
+                }
             }
-            run {
-                run {
-                    mainGridPane.add(Label("Zoom:"), 0, rowIndex)
-                    mainGridPane.add(Label("Output Preview:"), 1, rowIndex)
-                    rowIndex++
-                    mainGridPane.add(withCrosshair(zoomInputImageView), 0, rowIndex)
-                    mainGridPane.add(withCrosshair(zoomOutputImageView), 1, rowIndex)
-                    rowIndex++
-                }
-                run {
-                    mainGridPane.add(Label("Glow:"), 0, rowIndex)
-                    val hbox = hbox(SPACING) {
-                        children += label("Delta:")
-                        children += combobox(SampleChannel.values()) {
-                            tooltip = tooltip("Color channel used to show the delta between the input image and glow image.\n"
-                                    + "The brightness delta is useful to determine how much color information is lost in the subtraction.")
-                            Bindings.bindBidirectional(valueProperty(), zoomDeltaSampleChannelProperty)
-                        }
-                        children += spinner(1.0, 50.0, 20.0) {
-                            tooltip = tooltip("Factor used to exaggerate the delta value.")
-                            styleClass.add(Spinner.STYLE_CLASS_SPLIT_ARROWS_HORIZONTAL)
-                            prefWidth = 70.0
-                            zoomDeltaSampleFactorProperty.bind(valueProperty())
-                        }
+            children += gridpane {
+                hgap = SPACING
+                vgap = SPACING
+
+                row {
+                    cell {
+                        label("Removal:")
                     }
-                    mainGridPane.add(hbox, 1, rowIndex)
-                    rowIndex++;
-
-                    mainGridPane.add(withCrosshair(zoomGradientImageView), 0, rowIndex)
-                    mainGridPane.add(withCrosshair(zoomDeltaImageView), 1, rowIndex)
-                    tooltip(zoomDeltaImageView, ("Shows the difference between the glow image and input image.\n"
-                            + "The channel to calculate the difference can be selected: Red, Green, Blue, Hue, Saturation, Brightness\n"
-                            + "Blue colors indicate a positive, red a negative difference."
-                            + "If the delta channel is set to the 'Brightness', red colors indicate that the output image brightness will be < 0 and therefore information is lost."))
-                    rowIndex++
-                }
-            }
-            run {
-                val glowTabPane = TabPane()
-                mainGridPane.add(glowTabPane, 0, rowIndex, 4, 1)
-                glowTabPane.tabClosingPolicy = TabPane.TabClosingPolicy.UNAVAILABLE
-                var glowSingleColorTab: Tab
-                var glowBlurTab: Tab
-                var glowGradientTab: Tab
-                run {
-                    val glowSingleColorGridPane = GridPane()
-                    glowSingleColorGridPane.hgap = SPACING
-                    glowSingleColorGridPane.vgap = SPACING
-                    glowSingleColorTab = Tab("Single Color", glowSingleColorGridPane)
-                    glowTabPane.tabs.add(glowSingleColorTab)
-                    glowSingleColorTab.tooltip = tooltip(("Determine a single color that will be used uniformly to estimate the glow.\n"
-                            + "This is a good strategy if the glow is uniform over the entire image."))
-                    var glowSingleColorRowIndex = 0
-
-                    run {
-                        val buttonBox = hbox(SPACING) {
-                            children += button("Median All") {
-                                tooltip = tooltip("Finds the median color of all pixels in the input image.")
-                                onAction = EventHandler {
-                                    updateSingleGlowColor {
-                                        if (medianAllColor == null) {
-                                            medianAllColor = toJavafxColor(inputDoubleImage.medianPixel(ColorModel.RGB))
-                                        }
-                                        medianAllColor!!
-                                    }
-                                    singleGlowColorDescriptionProperty.set("Median All " + inputDoubleImage.width + "x" + inputDoubleImage.height)
-                                }
-                            }
-
-                            children += button("Average All") {
-                                tooltip = tooltip("Finds the average color of all pixels in the input image.")
-                                onAction = EventHandler {
-                                    updateSingleGlowColor {
-                                        if (averageAllColor == null) {
-                                            averageAllColor = toJavafxColor(inputDoubleImage.averagePixel(ColorModel.RGB))
-                                        }
-                                        averageAllColor!!
-                                    }
-                                    singleGlowColorDescriptionProperty.set("Average All " + inputDoubleImage.width + "x" + inputDoubleImage.height)
-                                }
-                            }
-
-                            children += button("Darkest All") {
-                                tooltip = tooltip("Finds the darkest color of all pixels in the input image.")
-                                onAction = EventHandler {
-                                    updateSingleGlowColor {
-                                        if (darkestAllColor == null) {
-                                            darkestAllColor = toJavafxColor(inputDoubleImage.darkestPixel())
-                                        }
-                                        darkestAllColor!!
-                                    }
-                                    singleGlowColorDescriptionProperty.set("Darkest All " + inputDoubleImage.width + "x" + inputDoubleImage.height)
-                                }
-                            }
-                        }
-                        glowSingleColorGridPane.add(buttonBox, 0, glowSingleColorRowIndex, 2, 1)
-                        glowSingleColorRowIndex++
-                    }
-                    run {
-                        val buttonBox = hbox(SPACING) {
-                            children += button("Median Zoom") {
-                                tooltip = tooltip("Finds the median color of the pixels in the zoom input image.")
-                                onAction = EventHandler {
-                                    updateSingleGlowColor { toJavafxColor(zoomInputDoubleImage.medianPixel()) }
-                                    val width = ZOOM_WIDTH
-                                    val height = ZOOM_HEIGHT
-                                    val x = zoomCenterXProperty.get() - width / 2
-                                    val y = zoomCenterYProperty.get() - height / 2
-                                    singleGlowColorDescriptionProperty.set("Median Zoom " + x + "," + y + " " + width + "x" + height)
-                                }
-                            }
-
-                            children += button("Average Zoom") {
-                                tooltip = tooltip("Finds the average color of the pixels in the zoom input image.")
-                                onAction = EventHandler {
-                                    updateSingleGlowColor { toJavafxColor(zoomInputDoubleImage.averagePixel()) }
-                                    val width: Int = ZOOM_WIDTH
-                                    val height: Int = ZOOM_HEIGHT
-                                    val x: Int = zoomCenterXProperty.get() - width / 2
-                                    val y: Int = zoomCenterYProperty.get() - height / 2
-                                    singleGlowColorDescriptionProperty.set("Average Zoom " + x + "," + y + " " + width + "x" + height)
-                                }
-                            }
-
-                            children += button("Darkest Zoom") {
-                                tooltip = tooltip("Finds the darkest color of the pixels in the zoom input image.")
-                                onAction = EventHandler {
-                                    updateSingleGlowColor { toJavafxColor(zoomInputDoubleImage.darkestPixel()) }
-                                    val width: Int = ZOOM_WIDTH
-                                    val height: Int = ZOOM_HEIGHT
-                                    val x: Int = zoomCenterXProperty.get() - width / 2
-                                    val y: Int = zoomCenterYProperty.get() - height / 2
-                                    singleGlowColorDescriptionProperty.set("Darkest Zoom " + x + "," + y + " " + width + "x" + height)
-                                }
-                            }
-                        }
-                        glowSingleColorGridPane.add(buttonBox, 0, glowSingleColorRowIndex, 2, 1)
-                        glowSingleColorRowIndex++
-                    }
-
-                    run {
-                        val buttonBox = hbox(SPACING) {
-                            children += button("Median Sample") {
-                                tooltip = tooltip("Finds the median color of the pixels in the sample radius of the zoom input image.")
-                                onAction = EventHandler {
-                                    val zx = ZOOM_WIDTH / 2
-                                    val zy = ZOOM_HEIGHT / 2
-                                    val r = sampleRadiusProperty.get()
-                                    updateSingleGlowColor { toJavafxColor(zoomInputDoubleImage.croppedImage(zx - r, zy - r, r + r + 1, r + r + 1).medianPixel()) }
-                                    val width = r + r + 1
-                                    val height = r + r + 1
-                                    val x = zoomCenterXProperty.get() - width / 2
-                                    val y = zoomCenterYProperty.get() - height / 2
-                                    singleGlowColorDescriptionProperty.set("Median Sample " + x + "," + y + " " + width + "x" + height)
-                                }
-                            }
-
-                            children += button("Average Sample") {
-                                tooltip = tooltip("Finds the average color of the pixels in the sample radius of the zoom input image.")
-                                onAction = EventHandler {
-                                    val zx: Int = ZOOM_WIDTH / 2
-                                    val zy: Int = ZOOM_HEIGHT / 2
-                                    val r: Int = sampleRadiusProperty.get()
-                                    updateSingleGlowColor { toJavafxColor(zoomInputDoubleImage.croppedImage(zx - r, zy - r, r + r + 1, r + r + 1).averagePixel()) }
-                                    val width: Int = r + r + 1
-                                    val height: Int = r + r + 1
-                                    val x: Int = zoomCenterXProperty.get() - width / 2
-                                    val y: Int = zoomCenterYProperty.get() - height / 2
-                                    singleGlowColorDescriptionProperty.set("Average Sample " + x + "," + y + " " + width + "x" + height)
-                                }
-                            }
-
-                            children += button("Darkest Sample") {
-                                tooltip = tooltip("Finds the darkest color of the pixels in the sample radius of the zoom input image.")
-                                onAction = EventHandler {
-                                    val zx: Int = ZOOM_WIDTH / 2
-                                    val zy: Int = ZOOM_HEIGHT / 2
-                                    val r: Int = sampleRadiusProperty.get()
-                                    updateSingleGlowColor { toJavafxColor(zoomInputDoubleImage.croppedImage(zx - r, zy - r, r + r + 1, r + r + 1).darkestPixel()) }
-                                    val width: Int = r + r + 1
-                                    val height: Int = r + r + 1
-                                    val x: Int = zoomCenterXProperty.get() - width / 2
-                                    val y: Int = zoomCenterYProperty.get() - height / 2
-                                    singleGlowColorDescriptionProperty.set("Darkest Sample " + x + "," + y + " " + width + "x" + height)
-                                }
-                            }
-                        }
-                        glowSingleColorGridPane.add(buttonBox, 0, glowSingleColorRowIndex, 2, 1)
-                        glowSingleColorRowIndex++
-                    }
-                    run {
-                        glowSingleColorGridPane.add(Label("Glow Color:"), 0, glowSingleColorRowIndex)
-                        val sampleAverageRectangle = Rectangle(COLOR_INDICATOR_SIZE.toDouble(), COLOR_INDICATOR_SIZE.toDouble())
-                        glowSingleColorGridPane.add(sampleAverageRectangle, 1, glowSingleColorRowIndex)
-                        sampleAverageRectangle.fillProperty().bind(singleGlowColorProperty)
-                        glowSingleColorRowIndex++
-                    }
-                    run {
-                        glowSingleColorGridPane.add(Label("Glow Red:"), 0, glowSingleColorRowIndex)
-                        val glowRedLabel = Label()
-                        glowSingleColorGridPane.add(glowRedLabel, 1, glowSingleColorRowIndex)
-                        singleGlowColorProperty.addListener { _, _, newValue: Color? -> glowRedLabel.text = PERCENT_FORMAT.format(newValue!!.red) }
-                        glowSingleColorRowIndex++
-                    }
-                    run {
-                        glowSingleColorGridPane.add(Label("Glow Green:"), 0, glowSingleColorRowIndex)
-                        val glowGreenLabel = Label()
-                        glowSingleColorGridPane.add(glowGreenLabel, 1, glowSingleColorRowIndex)
-                        singleGlowColorProperty.addListener { _, _, newValue: Color? -> glowGreenLabel.text = PERCENT_FORMAT.format(newValue!!.green) }
-                        glowSingleColorRowIndex++
-                    }
-                    run {
-                        glowSingleColorGridPane.add(Label("Glow Blue:"), 0, glowSingleColorRowIndex)
-                        val glowBlueLabel = Label()
-                        glowSingleColorGridPane.add(glowBlueLabel, 1, glowSingleColorRowIndex)
-                        singleGlowColorProperty.addListener { _, _, newValue: Color? -> glowBlueLabel.text = PERCENT_FORMAT.format(newValue!!.blue) }
-                        glowSingleColorRowIndex++
-                    }
-                    run {
-                        glowSingleColorGridPane.add(Label("Color Description:"), 0, glowSingleColorRowIndex)
-                        val glowColorDescriptionLabel = Label()
-                        glowSingleColorGridPane.add(glowColorDescriptionLabel, 1, glowSingleColorRowIndex)
-                        glowColorDescriptionLabel.textProperty().bind(singleGlowColorDescriptionProperty)
-                        glowSingleColorRowIndex++
-                    }
-                }
-                run {
-                    val glowBlurGridPane = gridpane {
-                        hgap = SPACING
-                        vgap = SPACING
-
-                        row {
-                            cell {
-                                label("Despeckle Radius:")
-                            }
-                            cell {
-                                textfield {
-                                    Bindings.bindBidirectional(textProperty(), despeckleRadiusProperty, INTEGER_FORMAT)
-                                }
-                            }
-                        }
-                        row {
-                            cell {
-                                label("Blur Radius:")
-                            }
-                            cell {
-                                textfield {
-                                    Bindings.bindBidirectional(textProperty(), blurRadiusProperty, INTEGER_FORMAT)
-                                }
-                            }
-                        }
-                    }
-                    glowBlurTab = Tab("Blur", glowBlurGridPane)
-                    glowTabPane.tabs.add(glowBlurTab)
-                    glowBlurTab.tooltip = tooltip(("Blurs the input image to calculate the glow image.\n"
-                            + "This is a good strategy for images where the object of interest occupies only a small area."))
-                }
-                run {
-                    val glowInterpolateGridPane = gridpane {
-                        hgap = SPACING
-                        vgap = SPACING
-
-                        row {
-                            cell {
-                                hbox {
-                                    children += button("Add") {
-                                        tooltip = tooltip("Adds a new fix point to interpolate the glow.\n"
-                                                + "Make sure to set points in areas that only contain background glow and no nebula or stars.\n"
-                                                + "It is best to define an odd number of points - three points is usually a good number.")
-                                        onAction = EventHandler {
-                                            val x = zoomCenterXProperty.get()
-                                            val y = zoomCenterYProperty.get()
-                                            addFixPoint(x, y)
-                                        }
-                                    }
-                                    children += button("Clear") {
-                                        tooltip = tooltip("Removes all fix points.")
-                                        onAction = EventHandler {
-                                            fixPoints.clear()
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        row {
-                            cell {
-                                tableview(fixPoints) {
-                                    placeholder = Label("Add points to define the background gradient.")
-                                    prefHeight = 100.0
-                                    setRowFactory {
-                                        val tableRow = TableRow<FixPoint>()
-                                        val gotoMenuItem = MenuItem("Go To")
-                                        gotoMenuItem.onAction = EventHandler { setZoom(tableRow.item.x, tableRow.item.y) }
-                                        val removeMenuItem = MenuItem("Remove")
-                                        removeMenuItem.onAction = EventHandler { fixPoints.remove(tableRow.item) }
-                                        tableRow.contextMenu = ContextMenu(
-                                                gotoMenuItem,
-                                                removeMenuItem
-                                        )
-                                        tableRow
-                                    }
-                                    addTableColumn(this, "X", 40.0) { fixPoint: FixPoint -> ReadOnlyIntegerWrapper(fixPoint.x) }
-                                    addTableColumn(this, "Y", 40.0) { fixPoint: FixPoint -> ReadOnlyIntegerWrapper(fixPoint.y) }
-                                    addTableColumn(this, "Color", 50.0) { fixPoint: FixPoint ->
-                                        val rectangle = Rectangle(COLOR_INDICATOR_SIZE.toDouble(), COLOR_INDICATOR_SIZE.toDouble())
-                                        rectangle.fill = fixPoint.color
-                                        ReadOnlyObjectWrapper(rectangle)
-                                    }
-                                    addTableColumn(this, "Red", 70.0) { fixPoint: FixPoint -> ReadOnlyStringWrapper(PERCENT_FORMAT.format(fixPoint.color.red)) }
-                                    addTableColumn(this, "Green", 70.0) { fixPoint: FixPoint -> ReadOnlyStringWrapper(PERCENT_FORMAT.format(fixPoint.color.green)) }
-                                    addTableColumn(this, "Blue", 70.0) { fixPoint: FixPoint -> ReadOnlyStringWrapper(PERCENT_FORMAT.format(fixPoint.color.blue)) }
-                                }
-                            }
-                        }
-                    }
-                    glowGradientTab = Tab("Gradient", glowInterpolateGridPane)
-                    glowTabPane.tabs.add(glowGradientTab)
-                    glowGradientTab.tooltip = tooltip(("Interpolates the glow between two or more points.\n"
-                            + "This is a good strategy for images with a glow that shows a strong gradient."))
-
-                    var glowInterpolateRowIndex = 0
-                    glowInterpolateRowIndex++
-                    glowInterpolateRowIndex++
-                    run {
-                        run {
-                            glowInterpolateGridPane.add(Label("Point Finder:"), 0, glowInterpolateRowIndex)
-                            val pointFinderComboBox = ComboBox(FXCollections
-                                    .observableArrayList(*PointFinderStrategy.values()))
-                            glowInterpolateGridPane.add(pointFinderComboBox, 1, glowInterpolateRowIndex)
-                            Bindings.bindBidirectional(pointFinderComboBox.valueProperty(), pointFinderStrategyProperty)
-                            glowInterpolateRowIndex++
-                        }
-                        run {
-                            glowInterpolateGridPane.add(Label("Interpolation Power:"), 0, glowInterpolateRowIndex)
-                            val interpolationPowerTextField = TextField()
-                            glowInterpolateGridPane.add(interpolationPowerTextField, 1, glowInterpolateRowIndex)
-                            Bindings.bindBidirectional(interpolationPowerTextField.textProperty(),
-                                    interpolationPowerProperty, DOUBLE_FORMAT)
-                            glowInterpolateRowIndex++
+                    cell {
+                        textfield {
+                            Bindings.bindBidirectional(textProperty(), removalFactorProperty, PERCENT_FORMAT)
                         }
                     }
                 }
-
-                glowTabPane.selectionModel.selectedItemProperty().addListener { _, _, newValue: Tab ->
-                    when {
-                        newValue === glowSingleColorTab -> {
-                            glowStrategyProperty.set(GlowStrategy.SingleColor)
-                        }
-                        newValue === glowBlurTab -> {
-                            glowStrategyProperty.set(GlowStrategy.Blur)
-                        }
-                        newValue === glowGradientTab -> {
-                            glowStrategyProperty.set(GlowStrategy.Gradient)
+                row {
+                    cell {
+                        label("Sample Subtraction:")
+                    }
+                    cell {
+                        combobox(SubtractionStrategy.values()) {
+                            tooltip = tooltip("Different strategies to subtract the calculated glow from the input image.\n"
+                                    + "Subtract: Simply subtracts the RGB values of the glow.\n"
+                                    + "Subtract Linear: Subtracts the RGB values of the glow and corrects the remaining value linearly.\n"
+                                    + "Spline 1%: Uses a spline function to reduce the RGB value of the glow to 1%.\n"
+                                    + "Spline 1% + Stretch: Uses a spline function to reduce the RGB value of the glow to 1% - stretching the remaining value non-linearly.\n"
+                                    + "Spline 10%: Uses a spline function to reduce the RGB value of the glow to 10%.\n")
+                            Bindings.bindBidirectional(valueProperty(), sampleSubtractionStrategyProperty)
                         }
                     }
                 }
-                glowStrategyProperty.addListener { _, _, newValue: GlowStrategy? ->
-                    when (newValue) {
-                        GlowStrategy.SingleColor -> glowTabPane.selectionModel.select(glowSingleColorTab)
-                        GlowStrategy.Blur -> glowTabPane.selectionModel.select(glowBlurTab)
-                        GlowStrategy.Gradient -> glowTabPane.selectionModel.select(glowGradientTab)
+                row {
+                    cell {
+                        label("Curve:")
+                    }
+                    cell {
+                        node(colorCurveCanvas) {
+                            tooltip(this,"Color curve shows how the RGB values for the current pixel from the input image (x-axis) to the output image (y-axis) are transformed.")
+                        }
                     }
                 }
-                glowTabPane.selectionModel.select(glowGradientTab)
-            }
-            run {
-                val subtractionGridPane = gridpane {
-                    hgap = SPACING
-                    vgap = SPACING
-
-                    row {
-                        cell {
-                            label("Removal:")
-                        }
-                        cell {
-                            textfield {
-                                Bindings.bindBidirectional(textProperty(), removalFactorProperty, PERCENT_FORMAT)
-                            }
+                row {
+                    cell {
+                        label("Input:")
+                    }
+                    cell {
+                        node(inputHistogramCanvas) {
+                            tooltip(this, "Histogram of the RGB values over the entire input image.")
                         }
                     }
-                    row {
-                        cell {
-                            label("Sample Subtraction:")
-                        }
-                        cell {
-                            combobox(SubtractionStrategy.values()) {
-                                tooltip = tooltip("Different strategies to subtract the calculated glow from the input image.\n"
-                                        + "Subtract: Simply subtracts the RGB values of the glow.\n"
-                                        + "Subtract Linear: Subtracts the RGB values of the glow and corrects the remaining value linearly.\n"
-                                        + "Spline 1%: Uses a spline function to reduce the RGB value of the glow to 1%.\n"
-                                        + "Spline 1% + Stretch: Uses a spline function to reduce the RGB value of the glow to 1% - stretching the remaining value non-linearly.\n"
-                                        + "Spline 10%: Uses a spline function to reduce the RGB value of the glow to 10%.\n")
-                                Bindings.bindBidirectional(valueProperty(), sampleSubtractionStrategyProperty)
-                            }
-                        }
-                    }
-                    row {
-                        cell {
-                            label("Curve:")
-                        }
-                        cell {
-                            node(colorCurveCanvas) {
-                                tooltip(this,"Color curve shows how the RGB values for the current pixel from the input image (x-axis) to the output image (y-axis) are transformed.")
-                            }
-                        }
-                    }
-                    row {
-                        cell {
-                            label("Input:")
-                        }
-                        cell {
-                            node(inputHistogramCanvas) {
-                                tooltip(this, "Histogram of the RGB values over the entire input image.")
-                            }
-                        }
-                    }
-                    row {
-                        cell {
-                            label("Zoom Input:")
-                        }
-                        cell {
-                            node(zoomInputHistogramCanvas) {
-                                tooltip(this, "Histogram of the RGB values over the zoom input image.")
-                            }
-                        }
-                    }
-                    row {
-                        cell {
-                            label("Zoom Output:")
-                        }
-                        cell {
-                            node(zoomOutputHistogramCanvas) {
-                                tooltip(this, "Histogram of the RGB values over the zoom output image.")
-                            }
-                        }
-                    }
-
                 }
-
-                mainBox.children.add(subtractionGridPane)
+                row {
+                    cell {
+                        label("Zoom Input:")
+                    }
+                    cell {
+                        node(zoomInputHistogramCanvas) {
+                            tooltip(this, "Histogram of the RGB values over the zoom input image.")
+                        }
+                    }
+                }
+                row {
+                    cell {
+                        label("Zoom Output:")
+                    }
+                    cell {
+                        node(zoomOutputHistogramCanvas) {
+                            tooltip(this, "Histogram of the RGB values over the zoom output image.")
+                        }
+                    }
+                }
             }
         }
 
@@ -1289,7 +1306,7 @@ class AstrophotographyApp : Application() {
         setupZoomDragEvents(zoomGradientImageView)
         setupZoomDragEvents(zoomDeltaImageView)
 
-        return mainBox
+        return hbox
     }
 
     private fun toJavafxColor(color: DoubleArray): Color {

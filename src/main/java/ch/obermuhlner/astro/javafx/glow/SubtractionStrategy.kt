@@ -1,4 +1,4 @@
-package ch.obermuhlner.astro.javafx
+package ch.obermuhlner.astro.javafx.glow
 
 import ch.obermuhlner.astro.gradient.operation.ImageOperation
 import ch.obermuhlner.astro.gradient.operation.SubtractImageOperation

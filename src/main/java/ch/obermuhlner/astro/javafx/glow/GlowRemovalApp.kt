@@ -1,4 +1,4 @@
-package ch.obermuhlner.astro.javafx
+package ch.obermuhlner.astro.javafx.glow
 
 import ch.obermuhlner.astro.gradient.Point
 import ch.obermuhlner.astro.gradient.analysis.Histogram
@@ -10,6 +10,7 @@ import ch.obermuhlner.astro.gradient.operation.SubtractLinearImageOperation
 import ch.obermuhlner.astro.image.*
 import ch.obermuhlner.astro.image.color.ColorModel
 import ch.obermuhlner.astro.image.color.ColorUtil
+import ch.obermuhlner.astro.javafx.*
 import javafx.application.Application
 import javafx.application.Platform
 import javafx.beans.binding.Bindings
@@ -31,7 +32,6 @@ import javafx.scene.layout.*
 import javafx.scene.paint.Color
 import javafx.scene.shape.Circle
 import javafx.scene.shape.Rectangle
-import javafx.scene.shape.Shape
 import javafx.stage.FileChooser
 import javafx.stage.Stage
 import org.apache.commons.imaging.Imaging
@@ -47,7 +47,7 @@ import java.util.function.Supplier
 import kotlin.math.max
 import kotlin.math.min
 
-class AstrophotographyApp : Application() {
+class GlowRemovalApp : Application() {
     private val homeDirectory = homeDirectory()
     private val gradientInterpolationFilter = GradientInterpolationFilter()
     private var gradientSubtractor: ImageOperation = SubtractLinearImageOperation()
@@ -1475,7 +1475,7 @@ class AstrophotographyApp : Application() {
 
         @JvmStatic
         fun main(args: Array<String>) {
-            launch(AstrophotographyApp::class.java)
+            launch(GlowRemovalApp::class.java)
         }
     }
 }

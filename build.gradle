@@ -9,7 +9,7 @@ plugins {
 group = 'ch.obermuhlner'
 version = '0.1.0'
 
-mainClassName = 'ch.obermuhlner.astro.javafx.AstrophotographyApp'
+mainClassName = 'ch.obermuhlner.astro.javafx.glow.GlowRemovalApp'
 applicationName = 'EZ Astrophotography'
 
 

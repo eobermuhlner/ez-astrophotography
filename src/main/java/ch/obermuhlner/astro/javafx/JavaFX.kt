@@ -98,6 +98,10 @@ class TableViewContext<S>(items: ObservableList<S>) : TableView<S>(items) {
     }
 }
 
+fun menuitem(text: String, initializer: MenuItem.() -> Unit)
+        = MenuItem(text).apply(initializer)
+
+
 fun tabpane(initializer: TabPane.() -> Unit)
         = TabPane().apply(initializer)
 

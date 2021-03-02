@@ -16,6 +16,8 @@ import javafx.event.EventHandler
 import javafx.scene.Group
 import javafx.scene.Node
 import javafx.scene.Scene
+import javafx.scene.control.ContextMenu
+import javafx.scene.control.TableRow
 import javafx.scene.image.ImageView
 import javafx.scene.image.WritableImage
 import javafx.scene.input.MouseEvent
@@ -135,6 +137,37 @@ class ImageStackerApp : Application() {
                 cell(4, 1) {
                     tableview(stackingFiles) {
                         prefHeight = 150.0
+
+                        setRowFactory {
+                            val tableRow = TableRow<StackingFile>()
+                            tableRow.contextMenu = ContextMenu(
+                                menuitem("Set as Base") {
+                                    onAction = EventHandler {
+                                        setAsBase(tableRow.item)
+                                    }
+                                },
+                                menuitem("Toggle Stack") {
+                                    onAction = EventHandler {
+                                        tableRow.item.stackProperty.set(!tableRow.item.stackProperty.get())
+                                        updateZoomOutputImage()
+                                    }
+                                },
+                                menuitem("Reset Alignment") {
+                                    onAction = EventHandler {
+                                        tableRow.item.xProperty.set(0)
+                                        tableRow.item.yProperty.set(0)
+                                        updateZoom()
+                                    }
+                                },
+                                menuitem("Remove") {
+                                    onAction = EventHandler {
+                                        stackingFiles.remove(tableRow.item)
+                                        updateZoom()
+                                    }
+                                }
+                            )
+                            tableRow
+                        }
 
                         column("Path", { stacking: StackingFile -> ReadOnlyStringWrapper(stacking.file.path) }) {
                             prefWidth = 200.0
@@ -258,6 +291,21 @@ class ImageStackerApp : Application() {
                 }
             }
         }
+    }
+
+    private fun setAsBase(newBaseStackingFile: StackingFile) {
+        val newX = newBaseStackingFile.xProperty.get()
+        val newY = newBaseStackingFile.yProperty.get()
+        for (stackingFile in stackingFiles) {
+            stackingFile.baseProperty.set(stackingFile == newBaseStackingFile)
+            stackingFile.xProperty.set(stackingFile.xProperty.get() - newX)
+            stackingFile.yProperty.set(stackingFile.yProperty.get() - newY)
+        }
+
+        newBaseStackingFile.image?.let {
+            updateBaseImage(it)
+        }
+        updateZoom()
     }
 
     private fun setupImageSelectionListener(imageView: ImageView) {

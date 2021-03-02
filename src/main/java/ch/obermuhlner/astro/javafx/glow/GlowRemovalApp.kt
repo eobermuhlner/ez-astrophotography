@@ -119,6 +119,10 @@ class GlowRemovalApp : Application() {
     private val zoomOutputHistogramCanvas: Canvas = Canvas(HISTOGRAM_WIDTH.toDouble(), HISTOGRAM_HEIGHT.toDouble())
     private val imageInfoGridPane = GridPane()
 
+    fun show() {
+        start(Stage())
+    }
+
     override fun start(primaryStage: Stage) {
         val root = Group()
         val scene = Scene(root)
@@ -491,15 +495,7 @@ class GlowRemovalApp : Application() {
         val width = inputDoubleImage.width
         val height = inputDoubleImage.height
 
-        inputImage = WritableImage(width, height)
-        val rgb = DoubleArray(3)
-        val pw = inputImage.pixelWriter
-        for (x in 0 until width) {
-            for (y in 0 until height) {
-                inputDoubleImage.getPixel(x, y, ColorModel.RGB, rgb)
-                pw.setArgb(x, y, ColorUtil.toIntARGB(rgb))
-            }
-        }
+        inputImage = JavaFXImageUtil.createWritableImage(inputDoubleImage)
         inputImageView.image = inputImage
 
         gradientImage = WritableImage(width, height)
@@ -1449,6 +1445,7 @@ class GlowRemovalApp : Application() {
     }
 
     private class FixPoint(val x: Int, val y: Int, val color: Color)
+
     companion object {
         private const val IMAGE_WIDTH = 600
         private const val IMAGE_HEIGHT = 600

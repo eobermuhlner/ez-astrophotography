@@ -1,14 +1,17 @@
 package ch.obermuhlner.astro.javafx
 
+import javafx.beans.value.ObservableValue
 import javafx.collections.FXCollections
 import javafx.collections.ObservableList
 import javafx.scene.Node
 import javafx.scene.control.*
+import javafx.scene.layout.BorderPane
 import javafx.scene.layout.GridPane
 import javafx.scene.layout.HBox
 import javafx.scene.layout.VBox
 import javafx.scene.shape.Circle
 import javafx.scene.shape.Rectangle
+import java.util.function.Function
 
 fun <T: Node> node(node: T, initializer: T.() -> Unit)
         = node.apply(initializer)
@@ -27,6 +30,10 @@ fun vbox(initializer: VBox.() -> Unit)
 
 fun vbox(spacing: Double, initializer: VBox.() -> Unit)
         = VBox(spacing).apply(initializer)
+
+
+fun borderpane(initializer: BorderPane.() -> Unit)
+        = BorderPane().apply(initializer)
 
 
 fun label(initializer: Label.() -> Unit)
@@ -74,12 +81,18 @@ fun circle(radius: Double, initializer: Circle.() -> Unit)
 //fun <S> tableview(initializer: TableView<S>.() -> Unit)
 //    = TableViewContext<S>().apply(initializer)
 
-fun <S> tableview(items: ObservableList<S>, initializer: TableView<S>.() -> Unit)
+fun <S> tableview(items: ObservableList<S>, initializer: TableViewContext<S>.() -> Unit)
         = TableViewContext<S>(items).apply(initializer)
 
 class TableViewContext<S>(items: ObservableList<S>) : TableView<S>(items) {
-    fun <V> tablecolumn(header: String, initializer: TableColumn<S, V>.() -> Unit): TableColumn<S, V> {
+    fun <V> column(header: String, initializer: TableColumn<S, V>.() -> Unit): TableColumn<S, V> {
         val tableColumn = TableColumn<S, V>(header).apply(initializer)
+        this.columns.add(tableColumn)
+        return tableColumn
+    }
+    fun <V> column(header: String, valueFunction: Function<S, ObservableValue<V>>,  initializer: TableColumn<S, V>.() -> Unit): TableColumn<S, V> {
+        val tableColumn = TableColumn<S, V>(header).apply(initializer)
+        tableColumn.setCellValueFactory { cellData -> valueFunction.apply(cellData.value) }
         this.columns.add(tableColumn)
         return tableColumn
     }

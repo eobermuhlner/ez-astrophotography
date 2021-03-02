@@ -24,7 +24,7 @@ class MemoryMappedFileDoubleImage(override val width: Int, override val height: 
     }
 
     override fun getNativePixel(x: Int, y: Int, color: DoubleArray): DoubleArray {
-        val index = x + y * width + 2
+        val index = (x + y * width) * channelsPerPixel + 2
         shortBuffer.position(index)
         color[0] = toDouble(shortBuffer.get())
         color[1] = toDouble(shortBuffer.get())
@@ -33,7 +33,7 @@ class MemoryMappedFileDoubleImage(override val width: Int, override val height: 
     }
 
     override fun setNativePixel(x: Int, y: Int, color: DoubleArray) {
-        val index = x + y * width + 2
+        val index = (x + y * width) * channelsPerPixel + 2
         shortBuffer.position(index)
         shortBuffer.put(toShort(color[0]))
         shortBuffer.put(toShort(color[1]))

@@ -7,7 +7,9 @@ import ch.obermuhlner.astro.image.MemoryMappedFileDoubleImage
 import ch.obermuhlner.astro.image.color.ColorModel
 import ch.obermuhlner.astro.image.color.ColorUtil
 import ch.obermuhlner.astro.javafx.*
+import ch.obermuhlner.astro.javafx.glow.GlowRemovalApp
 import ch.obermuhlner.astro.stack.AverageStacker
+import ch.obermuhlner.astro.stack.MaxStacker
 import ch.obermuhlner.astro.stack.MedianStacker
 import ch.obermuhlner.astro.stack.Stacker
 import ch.obermuhlner.astro.stack.StackingImage
@@ -27,6 +29,7 @@ import javafx.stage.Stage
 import java.io.*
 import java.nio.file.Path
 import java.nio.file.Paths
+import java.text.DecimalFormat
 import java.util.*
 import kotlin.math.max
 import kotlin.math.min
@@ -53,6 +56,8 @@ class ImageStackerApp : Application() {
     private val zoomCenterYProperty: IntegerProperty = SimpleIntegerProperty()
 
     private val stackerStrategyProperty: ObjectProperty<StackingStrategy> = SimpleObjectProperty(StackingStrategy.Average)
+
+    private val zoomAverageErrorProperty: DoubleProperty = SimpleDoubleProperty()
 
     private val baseImageView = ImageView()
     private val zoomBaseImageView = ImageView()
@@ -132,7 +137,7 @@ class ImageStackerApp : Application() {
     private fun createEditor(): Node {
         return gridpane {
             row {
-                cell(2, 1) {
+                cell(4, 1) {
                     tableview(stackingFiles) {
                         prefHeight = 150.0
 
@@ -226,9 +231,11 @@ class ImageStackerApp : Application() {
                 }
                 cell {
                     hbox(SPACING) {
-                        children += label("Stacked Output:")
+                        children += label("Stacked:")
                         children += combobox(StackingStrategy.values()) {
                             Bindings.bindBidirectional(valueProperty(), stackerStrategyProperty)
+
+                            stackerStrategyProperty.addListener { _, _, _ -> updateZoomOutputImage() }
                         }
                     }
                 }
@@ -244,6 +251,14 @@ class ImageStackerApp : Application() {
                     node(zoomOutputImageView) {
                         image = zoomOutputImage
                         setupZoomDragEvents(this)
+                    }
+                }
+                cell {
+                    label("Average Error:")
+                }
+                cell {
+                    label {
+                        Bindings.bindBidirectional(textProperty(), zoomAverageErrorProperty, PERCENT_FORMAT)
                     }
                 }
             }
@@ -377,17 +392,21 @@ class ImageStackerApp : Application() {
             val croppedStackingImage = selectedFile.image!!.croppedImage(zoomOffsetX + selectedFile.xProperty.get(), zoomOffsetY + selectedFile.yProperty.get(), ZOOM_WIDTH, ZOOM_HEIGHT)
             zoomStackingDoubleImage.setPixels(croppedStackingImage)
 
-            updateZoomDiffImage(croppedBaseImage, croppedStackingImage, zoomDiffDoubleImage)
+            val averageError = updateZoomDiffImage(croppedBaseImage, croppedStackingImage, zoomDiffDoubleImage)
+            zoomAverageErrorProperty.set(averageError)
         }
         updateZoomOutputImage()
     }
 
-    private fun updateZoomDiffImage(baseImage: DoubleImage, stackingImage: DoubleImage, diffImage: DoubleImage) {
+    private fun updateZoomDiffImage(baseImage: DoubleImage, stackingImage: DoubleImage, diffImage: DoubleImage): Double {
         val sampleFactor = 5
 
         val baseColor = DoubleArray(3)
         val stackingColor = DoubleArray(3)
         val outputColor = DoubleArray(3)
+
+        val n = baseImage.width * baseImage.height
+        var error = 0.0
 
         for (y in 0 until baseImage.height) {
             for (x in 0 until baseImage.width) {
@@ -399,6 +418,7 @@ class ImageStackerApp : Application() {
                 outputColor[ColorModel.RGB.B] = baseColor[ColorModel.RGB.B] - stackingColor[ColorModel.RGB.B]
 
                 val delta = ColorUtil.sampleDistance(outputColor, ColorModel.HSV, 2, true)
+                error += delta * delta
                 if (delta < 0) {
                     outputColor[ColorModel.RGB.R] = min(1.0, -delta * sampleFactor)
                     outputColor[ColorModel.RGB.G] = min(1.0, -delta * sampleFactor * 0.5)
@@ -412,6 +432,8 @@ class ImageStackerApp : Application() {
                 diffImage.setPixel(x, y, ColorModel.RGB, outputColor)
             }
         }
+        error /= n.toDouble()
+        return error
     }
 
     private fun updateZoomOutputImage() {
@@ -524,6 +546,10 @@ class ImageStackerApp : Application() {
 
         private const val SPACING = 2.0
 
+        private val INTEGER_FORMAT = DecimalFormat("##0")
+        private val DOUBLE_FORMAT = DecimalFormat("##0.000")
+        private val PERCENT_FORMAT = DecimalFormat("##0.000%")
+
         @JvmStatic
         fun main(args: Array<String>) {
             launch(ImageStackerApp::class.java)
@@ -547,6 +573,7 @@ class ImageStackerApp : Application() {
 
     enum class StackingStrategy(val stacker: Stacker) {
         Average(AverageStacker()),
-        Median(MedianStacker())
+        Median(MedianStacker()),
+        Max(MaxStacker())
     }
 }

@@ -145,4 +145,8 @@ object ColorUtil {
         }
         return target
     }
+
+    fun convertRGBtoLuminosity(rgb: DoubleArray): Double {
+        return 0.2126 * rgb[ColorModel.RGB.R] + 0.7152 * rgb[ColorModel.RGB.G] + 0.0722 * rgb[ColorModel.RGB.G]
+    }
 }

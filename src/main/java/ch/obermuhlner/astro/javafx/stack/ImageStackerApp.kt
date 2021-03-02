@@ -7,12 +7,7 @@ import ch.obermuhlner.astro.image.MemoryMappedFileDoubleImage
 import ch.obermuhlner.astro.image.color.ColorModel
 import ch.obermuhlner.astro.image.color.ColorUtil
 import ch.obermuhlner.astro.javafx.*
-import ch.obermuhlner.astro.javafx.glow.GlowRemovalApp
-import ch.obermuhlner.astro.stack.AverageStacker
-import ch.obermuhlner.astro.stack.MaxStacker
-import ch.obermuhlner.astro.stack.MedianStacker
-import ch.obermuhlner.astro.stack.Stacker
-import ch.obermuhlner.astro.stack.StackingImage
+import ch.obermuhlner.astro.stack.*
 import javafx.application.Application
 import javafx.beans.binding.Bindings
 import javafx.beans.property.*
@@ -330,8 +325,8 @@ class ImageStackerApp : Application() {
                 val deltaY = stackingDragY!! - event.y
                 stackingDragX = event.x
                 stackingDragY = event.y
-                var stackingX = selectedStacking.xProperty.get() + deltaX.toInt()
-                var stackingY = selectedStacking.yProperty.get() + deltaY.toInt()
+                val stackingX = selectedStacking.xProperty.get() + deltaX.toInt()
+                val stackingY = selectedStacking.yProperty.get() + deltaY.toInt()
                 selectedStacking.xProperty.set(stackingX)
                 selectedStacking.yProperty.set(stackingY)
                 updateZoom()
@@ -351,7 +346,7 @@ class ImageStackerApp : Application() {
     }
 
     private fun updateBaseImage(image: DoubleImage) {
-        baseImage = image;
+        baseImage = image
         baseImageView.image = JavaFXImageUtil.createWritableImage(image)
 
         zoomCenterXProperty.set(image.width / 2)
@@ -378,15 +373,12 @@ class ImageStackerApp : Application() {
         val zoomOffsetX = zoomX - ZOOM_WIDTH / 2
         val zoomOffsetY = zoomY - ZOOM_HEIGHT / 2
 
-        val base = baseImage
-        if (base == null) {
-            return
-        }
+        val base = baseImage ?: return
         val croppedBaseImage = base.croppedImage(zoomOffsetX, zoomOffsetY, ZOOM_WIDTH, ZOOM_HEIGHT)
         zoomBaseDoubleImage.setPixels(croppedBaseImage)
 
         val selectedFile = selectedStackingFile
-        if (selectedFile == null || selectedFile.image == null) {
+        if (selectedFile?.image == null) {
             zoomDiffDoubleImage.setPixels(croppedBaseImage)
         } else {
             val croppedStackingImage = selectedFile.image!!.croppedImage(zoomOffsetX + selectedFile.xProperty.get(), zoomOffsetY + selectedFile.yProperty.get(), ZOOM_WIDTH, ZOOM_HEIGHT)
@@ -464,7 +456,7 @@ class ImageStackerApp : Application() {
                     color[ColorModel.RGB.R] += tempColor[ColorModel.RGB.R]
                     color[ColorModel.RGB.G] += tempColor[ColorModel.RGB.G]
                     color[ColorModel.RGB.B] += tempColor[ColorModel.RGB.B]
-                    n++;
+                    n++
                 }
             }
         }
@@ -478,11 +470,11 @@ class ImageStackerApp : Application() {
     @Throws(IOException::class)
     private fun loadImage(file: File): DoubleImage {
         val mmiFile = File(file.path + ".mmi")
-        if (mmiFile.exists()) {
-            return MemoryMappedFileDoubleImage.fromFile(mmiFile)
+        return if (mmiFile.exists()) {
+            MemoryMappedFileDoubleImage.fromFile(mmiFile)
         } else {
             val image = ImageReader.read(file, ImageQuality.High)
-            return MemoryMappedFileDoubleImage.fromImage(image, mmiFile)
+            MemoryMappedFileDoubleImage.fromImage(image, mmiFile)
         }
     }
 

@@ -82,7 +82,7 @@ fun circle(radius: Double, initializer: Circle.() -> Unit)
 //    = TableViewContext<S>().apply(initializer)
 
 fun <S> tableview(items: ObservableList<S>, initializer: TableViewContext<S>.() -> Unit)
-        = TableViewContext<S>(items).apply(initializer)
+        = TableViewContext(items).apply(initializer)
 
 class TableViewContext<S>(items: ObservableList<S>) : TableView<S>(items) {
     fun <V> column(header: String, initializer: TableColumn<S, V>.() -> Unit): TableColumn<S, V> {
@@ -112,8 +112,7 @@ class GridPaneContext : GridPane() {
     private var rowIndex = 0
 
     fun row(initializer: RowContext.() -> Unit): RowContext {
-        val context = RowContext(this, rowIndex++).apply(initializer)
-        return context
+        return RowContext(this, rowIndex++).apply(initializer)
     }
 }
 

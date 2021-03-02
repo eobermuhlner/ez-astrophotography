@@ -24,7 +24,7 @@ object ImageCreator {
         val directory = FileDirectory()
         directory.setImageWidth(width)
         directory.setImageHeight(height)
-        directory.bitsPerSample = Arrays.asList(bitsPerSample, bitsPerSample, bitsPerSample)
+        directory.bitsPerSample = listOf(bitsPerSample, bitsPerSample, bitsPerSample)
         directory.compression = TiffConstants.COMPRESSION_NO
         directory.photometricInterpretation = TiffConstants.PHOTOMETRIC_INTERPRETATION_RGB
         directory.samplesPerPixel = samplesPerPixel

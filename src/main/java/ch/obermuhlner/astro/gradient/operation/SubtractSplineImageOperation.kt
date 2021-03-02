@@ -30,6 +30,6 @@ class SubtractSplineImageOperation constructor(private val factor: Double, priva
     }
 
     override fun toString(): String {
-        return "SubtractSpine(factor=" + factor + ", xy=" + Arrays.toString(xyPairs) + ")"
+        return "SubtractSpine(factor=" + factor + ", xy=" + xyPairs.contentToString() + ")"
     }
 }

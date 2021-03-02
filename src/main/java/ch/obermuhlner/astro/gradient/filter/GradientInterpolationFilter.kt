@@ -14,7 +14,7 @@ class GradientInterpolationFilter : Filter {
     private val adaptiveGradient: Boolean = false
     private val mapPointToColor: MutableMap<Point, DoubleArray> = HashMap()
 
-    constructor() {}
+    constructor()
 
     constructor(interpolationPower: Double) {
         this.interpolationPower = interpolationPower

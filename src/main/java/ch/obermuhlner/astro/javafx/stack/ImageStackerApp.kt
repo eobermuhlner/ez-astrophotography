@@ -18,6 +18,7 @@ import javafx.scene.Node
 import javafx.scene.Scene
 import javafx.scene.control.ContextMenu
 import javafx.scene.control.TableRow
+import javafx.scene.image.Image
 import javafx.scene.image.ImageView
 import javafx.scene.image.WritableImage
 import javafx.scene.input.MouseEvent
@@ -218,7 +219,8 @@ class ImageStackerApp : Application() {
                 }
                 cell {
                     hbox {
-                        children += button("^") {
+                        children += button {
+                            graphic = ImageView(Image("icons/baseline_keyboard_arrow_up_black_18dp.png"))
                             onAction = EventHandler {
                                 selectedStackingFile?.let {
                                     it.yProperty.set(it.yProperty.get() + 1)
@@ -226,7 +228,8 @@ class ImageStackerApp : Application() {
                                 }
                             }
                         }
-                        children += button("V") {
+                        children += button {
+                            graphic = ImageView(Image("icons/baseline_keyboard_arrow_down_black_18dp.png"))
                             onAction = EventHandler {
                                 selectedStackingFile?.let {
                                     it.yProperty.set(it.yProperty.get() - 1)
@@ -234,7 +237,8 @@ class ImageStackerApp : Application() {
                                 }
                             }
                         }
-                        children += button("<") {
+                        children += button {
+                            graphic = ImageView(Image("icons/baseline_keyboard_arrow_left_black_18dp.png"))
                             onAction = EventHandler {
                                 selectedStackingFile?.let {
                                     it.xProperty.set(it.xProperty.get() + 1)
@@ -242,7 +246,8 @@ class ImageStackerApp : Application() {
                                 }
                             }
                         }
-                        children += button(">") {
+                        children += button {
+                            graphic = ImageView(Image("icons/baseline_keyboard_arrow_right_black_18dp.png"))
                             onAction = EventHandler {
                                 selectedStackingFile?.let {
                                     it.xProperty.set(it.xProperty.get() - 1)

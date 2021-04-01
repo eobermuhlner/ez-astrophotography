@@ -366,7 +366,7 @@ class GlowRemovalApp : Application() {
     private fun openProjectFile(stage: Stage) {
         val fileChooser = FileChooser()
         fileChooser.initialDirectory = inputFile?.parentFile ?: homeDirectory.toFile()
-        fileChooser.title = "Open Input Image"
+        fileChooser.title = "Open Project"
         fileChooser.extensionFilters.add(FileChooser.ExtensionFilter("EZ-Astro", "*" + EZ_ASTRO_FILE_EXTENSION))
         val propertiesFile = fileChooser.showOpenDialog(stage)
         if (propertiesFile != null) {
@@ -392,7 +392,7 @@ class GlowRemovalApp : Application() {
         if (outputFile != null) {
             ProgressDialog.show("Saving", "Saving output image ...") {
                 try {
-                    val propertiesFile = saveImage(outputFile)
+                    val propertiesFile = saveImageAndPropertiesFile(outputFile)
                     stage.title = inputFile!!.name + " - " + propertiesFile.name
                 } catch (e: IOException) {
                     e.printStackTrace()
@@ -402,14 +402,14 @@ class GlowRemovalApp : Application() {
     }
 
     @Throws(IOException::class)
-    private fun saveImage(outputFile: File): File {
+    private fun saveImageAndPropertiesFile(imageOutputFile: File): File {
         val inputImage = inputDoubleImage
         //DoubleImage inputImage = ImageReader.read(inputFile, ImageQuality.High);
         val outputImage = createOutputImage(inputImage)
         removeGradient(inputImage, gradientDoubleImage, outputImage)
-        ImageWriter.write(outputImage, outputFile)
+        ImageWriter.write(outputImage, imageOutputFile)
 
-        val propertiesFile = toPropertiesFile(outputFile)
+        val propertiesFile = toPropertiesFile(imageOutputFile)
         saveProperties(propertiesFile)
         return propertiesFile
     }

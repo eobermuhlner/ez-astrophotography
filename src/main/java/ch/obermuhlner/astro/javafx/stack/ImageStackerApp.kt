@@ -1,9 +1,6 @@
 package ch.obermuhlner.astro.javafx.stack
 
-import ch.obermuhlner.astro.image.DoubleImage
-import ch.obermuhlner.astro.image.ImageQuality
-import ch.obermuhlner.astro.image.ImageReader
-import ch.obermuhlner.astro.image.MemoryMappedFileDoubleImage
+import ch.obermuhlner.astro.image.*
 import ch.obermuhlner.astro.image.color.ColorModel
 import ch.obermuhlner.astro.image.color.ColorUtil
 import ch.obermuhlner.astro.javafx.*
@@ -90,12 +87,22 @@ class ImageStackerApp : Application() {
             }
             children += button("Open Project ...") {
                 onAction = EventHandler {
-                    loadProject(File("Untitled.ezastacker"))
+                    openProjectFile(stage)
+                }
+            }
+            children += button("Save Image ...") {
+                onAction = EventHandler {
+                    saveImageFile(stage)
+                }
+            }
+            children += button("Save Aligned Images ...") {
+                onAction = EventHandler {
+                    saveAlignedImageFiles(stage)
                 }
             }
             children += button("Save Project ...") {
                 onAction = EventHandler {
-                    saveProject(File("Untitled.ezastacker"))
+                    saveProjectFile(stage)
                 }
             }
         }
@@ -120,6 +127,87 @@ class ImageStackerApp : Application() {
                 }
             }
         }
+    }
+
+    private fun openProjectFile(stage: Stage) {
+        val fileChooser = FileChooser()
+        fileChooser.initialDirectory = homeDirectory().toFile()
+        fileChooser.title = "Open Project"
+        fileChooser.extensionFilters.add(FileChooser.ExtensionFilter("EZ-Astro Stacker", "*" + EZ_ASTRO_STACKER_FILE_EXTENSION))
+        val propertiesFile = fileChooser.showOpenDialog(stage)
+        if (propertiesFile != null) {
+            ProgressDialog.show("Loading", "Loading EZ-Astro Stacker project ...") {
+                try {
+                    loadProject(propertiesFile)
+                    stage.title = propertiesFile.name
+                } catch (e: IOException) {
+                    e.printStackTrace()
+                }
+            }
+        }
+    }
+
+    private fun saveImageFile(stage: Stage) {
+        val fileChooser = FileChooser()
+        fileChooser.initialDirectory = homeDirectory().toFile()
+        fileChooser.title = "Save Image"
+        fileChooser.extensionFilters.add(FileChooser.ExtensionFilter("Image", "*.tif", "*.tiff", "*.png", "*.jpg", "*.jpeg"))
+        fileChooser.extensionFilters.add(FileChooser.ExtensionFilter("All", "*"))
+        val outputFile = fileChooser.showSaveDialog(stage)
+        if (outputFile != null) {
+            ProgressDialog.show("Saving", "Saving output image ...") {
+                try {
+                    val propertiesFile = saveImageAndProjectFile(outputFile)
+                    stage.title = propertiesFile.name
+                } catch (e: IOException) {
+                    e.printStackTrace()
+                }
+            }
+        }
+    }
+
+    private fun saveAlignedImageFiles(stage: Stage) {
+        stackingFiles.forEach {
+            val alignedFile = File(it.file.parent, "aligned_" + it.file.name)
+            val image = it.image
+            if (image != null) {
+                ImageWriter.write(image.croppedImage(it.xProperty.get(), it.yProperty.get(), image.width, image.height, false), alignedFile)
+            }
+        }
+    }
+
+    private fun saveProjectFile(stage: Stage) {
+        val fileChooser = FileChooser()
+        fileChooser.initialDirectory = homeDirectory().toFile()
+        fileChooser.title = "Save Project"
+        fileChooser.extensionFilters.add(FileChooser.ExtensionFilter("EZ-Astro Stacker", "*" + EZ_ASTRO_STACKER_FILE_EXTENSION))
+        val outputFile = fileChooser.showSaveDialog(stage)
+        if (outputFile != null) {
+            ProgressDialog.show("Saving", "Saving project ...") {
+                try {
+                    saveProject(outputFile)
+                    stage.title = outputFile.name
+                } catch (e: IOException) {
+                    e.printStackTrace()
+                }
+            }
+        }
+    }
+
+    @Throws(IOException::class)
+    private fun saveImageAndProjectFile(imageOutputFile: File): File {
+        val outputImage = ImageCreator.create(baseImage!!.width, baseImage!!.height, ImageQuality.High)
+        calculateStackedOutputImage(0, 0, outputImage)
+
+        ImageWriter.write(outputImage, imageOutputFile)
+
+        val propertiesFile = toProjectFile(imageOutputFile)
+        saveProject(propertiesFile)
+        return propertiesFile
+    }
+
+    private fun toProjectFile(outputFile: File): File {
+        return File(outputFile.path + EZ_ASTRO_STACKER_FILE_EXTENSION)
     }
 
     private fun createImageViewer(): Node {
@@ -485,13 +573,17 @@ class ImageStackerApp : Application() {
         val zx = zoomCenterXProperty.get() - ZOOM_WIDTH/2
         val zy = zoomCenterYProperty.get() - ZOOM_HEIGHT/2
 
+        calculateStackedOutputImage(zx, zy, zoomOutputDoubleImage)
+    }
+
+    private fun calculateStackedOutputImage(x: Int, y: Int, outputImage: DoubleImage) {
         val stackingImages = stackingFiles
-                .filter { s -> s.stackProperty.get() && s.image != null }
-                .map { s -> StackingImage(s.image!!.croppedImage(zx+s.xProperty.get(), zy+s.yProperty.get(), ZOOM_WIDTH, ZOOM_HEIGHT, false), 0, 0) }
+            .filter { s -> s.stackProperty.get() && s.image != null }
+            .map { s -> StackingImage(s.image!!.croppedImage(x+s.xProperty.get(), y+s.yProperty.get(), outputImage.width, outputImage.height, false), 0, 0) }
 
         val stacker = stackerStrategyProperty.get().stacker
 
-        stacker.stack(stackingImages, zoomOutputDoubleImage)
+        stacker.stack(stackingImages, outputImage)
     }
 
     private fun calculateStackedColor(x: Int, y: Int, stackingFiles: List<StackingFile>, color: DoubleArray): DoubleArray {
@@ -522,12 +614,16 @@ class ImageStackerApp : Application() {
 
     @Throws(IOException::class)
     private fun loadImage(file: File): DoubleImage {
-        val mmiFile = File(file.path + ".mmi")
-        return if (mmiFile.exists()) {
-            MemoryMappedFileDoubleImage.fromFile(mmiFile)
+        if (USE_MEMORY_MAPPED_IMAGES) {
+            val mmiFile = File(file.path + ".mmi")
+            return if (mmiFile.exists()) {
+                MemoryMappedFileDoubleImage.fromFile(mmiFile)
+            } else {
+                val image = ImageReader.read(file, ImageQuality.High)
+                MemoryMappedFileDoubleImage.fromImage(image, mmiFile)
+            }
         } else {
-            val image = ImageReader.read(file, ImageQuality.High)
-            MemoryMappedFileDoubleImage.fromImage(image, mmiFile)
+            return ImageReader.read(file, ImageQuality.High)
         }
     }
 
@@ -594,6 +690,11 @@ class ImageStackerApp : Application() {
         private val INTEGER_FORMAT = DecimalFormat("##0")
         private val DOUBLE_FORMAT = DecimalFormat("##0.000")
         private val PERCENT_FORMAT = DecimalFormat("##0.000%")
+
+        private const val EZ_ASTRO_STACKER_FILE_EXTENSION = ".ezastacker"
+
+        private const val USE_MEMORY_MAPPED_IMAGES = false
+        private const val KEEP_ALL_IMAGES_LOADED = false
 
         @JvmStatic
         fun main(args: Array<String>) {

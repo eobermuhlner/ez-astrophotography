@@ -171,7 +171,10 @@ class ImageStackerApp : Application() {
             val alignedFile = File(it.file.parent, "aligned_" + it.file.name)
             val image = it.image
             if (image != null) {
-                ImageWriter.write(image.croppedImage(it.xProperty.get(), it.yProperty.get(), image.width, image.height, false), alignedFile)
+                val croppedImage = image.croppedImage(it.xProperty.get(), it.yProperty.get(), image.width, image.height, false)
+                val tiffImage = ImageCreator.createTiff(croppedImage.width, croppedImage.height)
+                tiffImage.setPixels(croppedImage)
+                ImageWriter.write(tiffImage, alignedFile)
             }
         }
     }
